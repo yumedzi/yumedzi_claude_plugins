@@ -57,5 +57,7 @@ you'll just need to ask for them by name.
 ## Attribution
 
 The agent prompts in this plugin are adapted from
-[`marsmike/claude-subagents`](https://github.com/marsmike/claude-subagents) (MIT). See the
-root `LICENSE` for the full notice.
+[`marsmike/claude-subagents`](https://github.com/marsmike/claude-subagents). That
+repository does not declare a license. This project's own `LICENSE` (MIT) covers only
+the original content here — the hook script, manifests, and docs — not the adapted
+agent prompts; see `LICENSE` for the full note.
