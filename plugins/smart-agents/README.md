@@ -43,6 +43,17 @@ session. The rent is not the reason to think twice about this hook; if you'd rat
 even that, drop `hooks/` and keep only `agents/` — the four agents still work standalone,
 you'll just need to ask for them by name.
 
+## Optional: project CLAUDE.md snippet
+
+`snippets/CLAUDE.md` is **not** loaded automatically by anything — it's a template you can
+paste into a project's real `CLAUDE.md` (or `.claude/CLAUDE.md`) if you want the routing
+discipline to apply somewhere the SessionStart hook doesn't reach — a headless run, or a
+project where the hook is disabled. Once pasted, it *is* loaded every session for that
+project, the same as any other project instructions, so only copy it if you actually want
+that. `snippets/settings.recommended.json` pairs with it — it sets the orchestrator's own
+model floor (`"model": "sonnet"`), since delegation only saves money if the orchestrator
+itself is cheap to run and no hook or CLAUDE.md snippet can set that for you.
+
 ## Two honest caveats
 
 - **The `Agent` tool listed in each agent's frontmatter is not a spawn sandbox.** It reflects
