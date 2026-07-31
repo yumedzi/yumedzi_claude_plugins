@@ -1,0 +1,37 @@
+{
+  "name": "yumedzi-claude-plugins",
+  "metadata": {
+    "description": "Personal Claude Code plugins",
+    "version": "1.0.0"
+  },
+  "owner": {
+    "name": "Viktor Moyseyenko",
+    "email": "vityok@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "smart-agents",
+      "description": "Four model-pinned delegation agents — scout (Haiku recon), researcher (Sonnet web briefs), worker (Sonnet code changes), deep-thinker (Opus reasoning). Cuts costs by routing to the cheapest model that can do the job. SessionStart hook injects delegation discipline every session.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Viktor Moyseyenko",
+        "email": "vityok@gmail.com"
+      },
+      "source": "./plugins/smart-agents",
+      "repository": "https://github.com/yumedzi/yumedzi_claude_plugins",
+      "category": "development",
+      "keywords": [
+        "agents",
+        "delegation",
+        "orchestration",
+        "context-management",
+        "parallel",
+        "scout",
+        "researcher",
+        "worker",
+        "cost-optimization"
+      ],
+      "license": "MIT"
+    }
+  ]
+}
