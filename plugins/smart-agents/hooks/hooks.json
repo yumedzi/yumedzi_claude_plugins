@@ -1,5 +1,5 @@
 {
-  "description": "smart-agents plugin hooks — delegation policy injected at session start.",
+  "description": "smart-agents plugin hooks — delegation policy injected at session start; deep-thinker dispatch gated behind explicit confirmation.",
   "hooks": {
     "SessionStart": [
       {
@@ -7,6 +7,19 @@
           {
             "type": "command",
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/inject-delegation-policy.sh\"",
+            "shell": "bash",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/gate-deep-thinker.sh\"",
             "shell": "bash",
             "timeout": 5
           }

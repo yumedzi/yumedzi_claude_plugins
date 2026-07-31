@@ -43,6 +43,30 @@ session. The rent is not the reason to think twice about this hook; if you'd rat
 even that, drop `hooks/` and keep only `agents/` — the four agents still work standalone,
 you'll just need to ask for them by name.
 
+## deep-thinker confirmation gate
+
+A `PreToolUse` hook fires on every `Agent` dispatch and reads the tool-call JSON from stdin;
+`hooks/gate-deep-thinker.sh` checks `tool_input.subagent_type` and only returns
+`permissionDecision: "ask"` when it's `smart-agents:deep-thinker` — every other dispatch
+(scout, researcher, worker) exits 0 with no output and is unaffected. The filtering happens
+in the script rather than in `hooks.json` because there's no documented `if`-rule syntax for
+matching a `tool_input` field (the documented forms are tool-name/argument patterns like
+`Bash(git *)`, not `key=value` field matches).
+
+This asks for confirmation on every dispatch, not just once per session — by design, since
+each dispatch is a separate cost decision. If that gets in the way for your workflow, remove
+the `PreToolUse` block from `hooks/hooks.json` (the `SessionStart` policy hook is independent
+and unaffected).
+
+Whether `"ask"` surfaces as a real interactive approval prompt depends on your terminal's
+permission mode — under `bypass permissions` or an auto-approve mode it may resolve without
+stopping. Test it in your own interactive session with:
+
+    claude --plugin-dir ./plugins/smart-agents
+
+then ask it to use the deep-thinker agent, and confirm you see a prompt naming the cost
+before it dispatches.
+
 ## Optional: project CLAUDE.md snippet
 
 `snippets/CLAUDE.md` is **not** loaded automatically by anything — it's a template you can
