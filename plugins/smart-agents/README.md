@@ -36,9 +36,15 @@ so the orchestrator doesn't have to be reminded in every prompt. It fires on eve
 `SessionStart` event (startup, resume, `/clear`, compaction), not just the first prompt of a
 session, so the policy doesn't silently disappear partway through a long session.
 
-Measured cost of that injection: ~1,570 bytes (~390 tokens), written to the prompt cache
+The policy also covers the built-in `Explore` and `Plan` agents, which this plugin cannot
+replace: simple recon goes to `scout` instead, and whenever a harness phase mandates `Explore`
+or `Plan` (plan mode does, for its exploration and design phases respectively), the policy says
+to comply with that restriction but always pass the `Agent` tool's `model` parameter explicitly
+— those two built-ins carry no model pin and otherwise default to the session model.
+
+Measured cost of that injection: ~2,550 bytes (~640 tokens), written to the prompt cache
 once per SessionStart event and read back on every subsequent turn. On Opus 5 pricing that's
-roughly $0.0047 to write and $0.0004 per turn to read — under 5 cents for a 100-turn
+roughly $0.0077 to write and $0.0007 per turn to read — under 8 cents for a 100-turn
 session. The rent is not the reason to think twice about this hook; if you'd rather not pay
 even that, drop `hooks/` and keep only `agents/` — the four agents still work standalone,
 you'll just need to ask for them by name.
@@ -78,7 +84,7 @@ that. `snippets/settings.recommended.json` pairs with it — it sets the orchest
 model floor (`"model": "sonnet"`), since delegation only saves money if the orchestrator
 itself is cheap to run and no hook or CLAUDE.md snippet can set that for you.
 
-## Two honest caveats
+## Three honest caveats
 
 - **The `Agent` tool listed in each agent's frontmatter is not a spawn sandbox.** It reflects
   intent — "this agent is meant to delegate to these others" — but once an agent is running
@@ -88,6 +94,11 @@ itself is cheap to run and no hook or CLAUDE.md snippet can set that for you.
 - **This plugin cannot set your main model.** No hook can. Delegation only saves money if
   the orchestrator itself runs on a reasonably cheap model — see
   `snippets/settings.recommended.json` for a starting point (`"model": "sonnet"`).
+- **The `model` override on Explore/Plan dispatches is a parameter of the `Agent` tool, not
+  something this plugin enforces.** The policy text asks the orchestrator to pass it; nothing
+  checks that it did. If a Claude Code build doesn't expose the parameter, or the orchestrator
+  just omits it, the dispatch silently falls back to the session model and the saving disappears
+  with no error or warning anywhere.
 
 ## Attribution
 

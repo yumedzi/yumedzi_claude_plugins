@@ -17,9 +17,13 @@ set -u
 
 # The policy text. Edit here freely — json_escape below handles the escaping.
 read -r -d '' POLICY <<'POLICY_EOF' || true
-smart-agents is installed: scout (haiku), researcher (sonnet), worker (sonnet), and deep-thinker (opus) are available for delegation. Route substantive work to whichever fits by default, instead of doing it yourself or reaching for built-in Explore / general-purpose — you pick the agent, the user doesn't pick a model per task. Each agent's own description says when it applies; don't re-derive that here.
+smart-agents is installed: scout (haiku), researcher (sonnet), worker (sonnet), and deep-thinker (opus) are available for delegation. Route substantive work to whichever fits by default, instead of doing it yourself — you pick the agent, the user doesn't pick a model per task. Built-in Explore / general-purpose are for a different shape of task: you need a synthesized conclusion, not a file map. Each agent's own description says when it applies; don't re-derive that here.
 
 Do it yourself when delegating buys nothing: a single grep, a small lookup, or output you need verbatim. Judge by how much of the result you'd have to read back anyway, not by how small the task sounds.
+
+Simple recon — an area named but not the exact files — goes to scout, not Explore; reserve Explore for when a conclusion requires sifting ambiguous candidates. If a harness phase mandates a specific built-in agent — plan mode's exploration phase mandates Explore, its design phase mandates Plan — comply, don't substitute scout.
+
+Mandatory, no exceptions, including when a phase mandates Explore or Plan: every single dispatch of Explore or Plan must carry the Agent tool's model parameter (haiku for a plain sweep, sonnet for a real judgment call). Those two carry no model pin and silently default to the full session-model rate if you omit it. This never conflicts with a phase mandate — the mandate is about which agent, not which model — so there is no case where skipping the parameter is correct.
 
 Escalate cheap-first. Start on whichever agent plausibly fits. A worker that fails or stalls twice stops and reports up instead of thrashing — you then dispatch deep-thinker to diagnose, and hand its fix plan to a fresh worker. Never spawn deep-thinker from inside a worker; that skips the cost call that belongs to the orchestrator.
 
