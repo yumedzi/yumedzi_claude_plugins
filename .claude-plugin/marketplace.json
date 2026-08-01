@@ -32,6 +32,29 @@
         "cost-optimization"
       ],
       "license": "MIT"
+    },
+    {
+      "name": "context-guard",
+      "description": "Zero-cost context-usage warning. A UserPromptSubmit hook reads the session transcript, infers the context window size from the active model, and shows a one-time systemMessage warning at 35% and again at 50% usage. Never sends anything to the model — the warning never appears in the transcript and costs no tokens.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Viktor Moyseyenko",
+        "email": "vityok@gmail.com"
+      },
+      "source": "./plugins/context-guard",
+      "repository": "https://github.com/yumedzi/yumedzi_claude_plugins",
+      "category": "development",
+      "keywords": [
+        "context-management",
+        "hooks",
+        "compaction",
+        "token-usage",
+        "cost-optimization",
+        "warning",
+        "session",
+        "zero-cost"
+      ],
+      "license": "MIT"
     }
   ]
 }

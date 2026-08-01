@@ -1,0 +1,17 @@
+{
+  "description": "context-guard plugin hooks — warns via systemMessage (user-visible only, never sent to the model) when context usage crosses 35% and 50%.",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/warn-context-usage.sh\"",
+            "shell": "bash",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}
