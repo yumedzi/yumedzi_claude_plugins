@@ -13,7 +13,7 @@ A personal Claude Code plugin marketplace.
 | Plugin | Description |
 |---|---|
 | [`smart-agents`](plugins/smart-agents) | Four cost-tiered delegation agents (scout/researcher/worker/deep-thinker) plus a SessionStart hook that keeps the orchestrator routing to them. |
-| [`cheap-explore`](plugins/cheap-explore) | Zero-cost PreToolUse hook that denies built-in Explore/Plan/general-purpose dispatches which omit an explicit `model` tier. |
+| [`cheap-explore`](plugins/cheap-explore) | Zero-cost PreToolUse hook that denies built-in `Explore` dispatches unless `model` is `haiku` or `sonnet`. |
 | [`context-guard`](plugins/context-guard) | Zero-cost UserPromptSubmit hook that warns via systemMessage when context usage crosses 35% and 50%. |
 
 ## License

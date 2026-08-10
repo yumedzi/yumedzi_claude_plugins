@@ -54,11 +54,15 @@ Until v1.2.0 the policy also carried a paragraph demanding that every `Explore` 
 dispatch pass the `Agent` tool's `model` parameter, since those built-ins have no model pin
 and otherwise fall back to the session model. That paragraph is gone. It was ~118 tokens of
 rent on every turn of every session, and it was only ever a request — nothing checked that
-the orchestrator complied.
+the orchestrator complied, and it didn't stop an *explicit* `model: opus` either.
 
-[`cheap-explore`](../cheap-explore) now enforces the same rule as a `PreToolUse` deny: it
-costs nothing until a dispatch actually omits the parameter, and it cannot be ignored. Install
-it alongside this plugin if you want that guarantee. Neither plugin depends on the other.
+[`cheap-explore`](../cheap-explore) now enforces the equivalent rule for `Explore` as a
+`PreToolUse` deny: costs nothing until a dispatch actually needs correcting, can't be
+ignored, and also blocks `opus` outright rather than treating it as a deliberate choice.
+It deliberately does not cover `Plan` — that one's usually a deliberate invocation where
+`opus` is a legitimate answer, not a mistake, so forcing it cheap would be wrong as often
+as right; see cheap-explore's README for the reasoning. Install it alongside this plugin if
+you want the `Explore` guarantee. Neither plugin depends on the other.
 
 ## deep-thinker confirmation gate
 
@@ -110,11 +114,13 @@ itself is cheap to run and no hook or CLAUDE.md snippet can set that for you.
 - **This plugin cannot set your main model.** No hook can. Delegation only saves money if
   the orchestrator itself runs on a reasonably cheap model — see
   `snippets/settings.recommended.json` for a starting point (`"model": "sonnet"`).
-- **Nothing here stops an unpinned `Explore` or `Plan` dispatch from running at session-model
-  rates.** The policy tells the orchestrator to prefer `scout` for recon, but if it dispatches
-  a built-in anyway without a `model` parameter, that sweep runs at full price with no error
-  or warning. Install [`cheap-explore`](../cheap-explore) if you want that blocked rather than
-  merely discouraged.
+- **Nothing here stops an unpinned `Explore` dispatch from running at session-model rates,
+  or `Plan` / `general-purpose` from doing the same.** The policy tells the orchestrator to
+  prefer `scout` for recon, but if it dispatches a built-in anyway without a `model`
+  parameter, that sweep runs at full price with no error or warning. Install
+  [`cheap-explore`](../cheap-explore) if you want `Explore` blocked rather than merely
+  discouraged — it doesn't cover `Plan` or `general-purpose` by default, though its
+  `CHEAP_AGENTS` list can be extended to either.
 
 ## Attribution
 

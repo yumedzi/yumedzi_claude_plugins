@@ -1,7 +1,7 @@
 {
   "name": "smart-agents",
   "version": "1.2.0",
-  "description": "Four model-pinned delegation agents — scout (Haiku recon), researcher (Sonnet web briefs), worker (Sonnet code changes), deep-thinker (Opus reasoning). Cuts costs by routing to the cheapest model that can do the job. SessionStart hook injects delegation discipline every session; deep-thinker dispatch asks for confirmation first since it's the most expensive tier. Pairs with cheap-explore, which pins the built-in Explore/Plan agents this plugin cannot replace.",
+  "description": "Four model-pinned delegation agents — scout (Haiku recon), researcher (Sonnet web briefs), worker (Sonnet code changes), deep-thinker (Opus reasoning). Cuts costs by routing to the cheapest model that can do the job. SessionStart hook injects delegation discipline every session; deep-thinker dispatch asks for confirmation first since it's the most expensive tier. Pairs with cheap-explore, which pins the built-in Explore agent this plugin cannot replace.",
   "author": {
     "name": "Viktor Moyseyenko",
     "email": "vityok@gmail.com"

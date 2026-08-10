@@ -2,7 +2,7 @@
   "name": "yumedzi-claude-plugins",
   "metadata": {
     "description": "Personal Claude Code plugins",
-    "version": "1.2.0"
+    "version": "1.3.0"
   },
   "owner": {
     "name": "Viktor Moyseyenko",
@@ -11,7 +11,7 @@
   "plugins": [
     {
       "name": "smart-agents",
-      "description": "Four model-pinned delegation agents — scout (Haiku recon), researcher (Sonnet web briefs), worker (Sonnet code changes), deep-thinker (Opus reasoning). Cuts costs by routing to the cheapest model that can do the job. SessionStart hook injects delegation discipline every session; deep-thinker dispatch asks for confirmation first since it's the most expensive tier. Pairs with cheap-explore, which pins the built-in Explore/Plan agents this plugin cannot replace.",
+      "description": "Four model-pinned delegation agents — scout (Haiku recon), researcher (Sonnet web briefs), worker (Sonnet code changes), deep-thinker (Opus reasoning). Cuts costs by routing to the cheapest model that can do the job. SessionStart hook injects delegation discipline every session; deep-thinker dispatch asks for confirmation first since it's the most expensive tier. Pairs with cheap-explore, which pins the built-in Explore agent this plugin cannot replace.",
       "version": "1.2.0",
       "author": {
         "name": "Viktor Moyseyenko",
@@ -35,8 +35,8 @@
     },
     {
       "name": "cheap-explore",
-      "description": "Zero-cost enforcement of an explicit model tier on the built-in Explore, Plan, and general-purpose agents. They carry no model pin, so a dispatch that omits the Agent tool's model parameter silently runs at the full session-model rate. A PreToolUse hook denies those dispatches and tells the model to retry with haiku or sonnet. Injects nothing at session start — costs tokens only on an actual miss.",
-      "version": "1.0.0",
+      "description": "Zero-cost enforcement that the built-in Explore agent stays on a cheap model tier. Explore carries no model pin, so a dispatch can silently run at the full session-model rate, or be explicitly set to opus for a plain file sweep. A PreToolUse hook denies any Explore dispatch whose model isn't haiku or sonnet and tells the model to retry. Injects nothing at session start — costs tokens only on an actual miss. Gated agent list is configurable via CHEAP_AGENTS.",
+      "version": "1.1.0",
       "author": {
         "name": "Viktor Moyseyenko",
         "email": "vityok@gmail.com"

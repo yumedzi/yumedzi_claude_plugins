@@ -2,11 +2,12 @@
 
 One hook, no agents, nothing injected into your context.
 
-The built-in `Explore`, `Plan`, and `general-purpose` agents carry no model pin in their
-definitions. If a dispatch omits the `Agent` tool's `model` parameter, the subagent runs at
-whatever the session model is — an Opus-rate file sweep, with no error, no warning, and
-nothing in the transcript to tell you it happened. This hook denies that dispatch and tells
-the model to retry with an explicit tier.
+The built-in `Explore` agent carries no model pin in its definition. A dispatch that omits
+the `Agent` tool's `model` parameter runs at whatever the session model is — an Opus-rate
+file sweep, with no error, no warning, and nothing in the transcript to tell you it
+happened. Worse, an *explicit* `model: opus` also passes as "a deliberate choice" even
+though it's still almost always wrong for what `Explore` does. This hook denies both cases
+and tells the model to retry with `haiku` or `sonnet`.
 
 A single `Explore` sweep that reads 30 files costs roughly $0.50–1.00 on Opus versus about
 $0.05 on Haiku. That is the whole reason this plugin exists.
@@ -34,14 +35,24 @@ injects nothing.
 A `PreToolUse` hook on `Agent` reads the tool-call JSON from stdin and denies when **both**
 hold:
 
-- `tool_input.subagent_type` is one of `Explore`, `Plan`, `general-purpose`
-- `tool_input.model` is absent or empty
+- `tool_input.subagent_type` is `Explore` (or another name added via `CHEAP_AGENTS`)
+- `tool_input.model` is not `haiku` or `sonnet` — missing, empty, `opus`, or anything else
 
-Every other dispatch — a pinned `smart-agents` agent, or a built-in that already names a
-tier — exits 0 with no output and is untouched. The deny reason tells the model to re-issue
-the same agent with the same prompt plus `model: haiku` (plain sweep) or `model: sonnet`
-(real judgment), and explicitly says not to swap agents to dodge the gate, since a plan-mode
-phase mandate is about *which agent*, not which model.
+Every other dispatch — a pinned `smart-agents` agent, `Plan`, `general-purpose`, or a
+non-`Agent` tool — exits 0 with no output and is untouched. The deny reason tells the model
+to re-issue the same agent with the same prompt plus `model: haiku` (plain sweep) or
+`model: sonnet` (real judgment), and explicitly says not to swap agents to dodge the gate,
+since a plan-mode phase mandate is about *which agent*, not which model.
+
+`Plan` and `general-purpose` are deliberately not gated by default. Both are unpinned
+built-ins too, so the same silent-fallback risk applies to them — but `Plan` fires rarely
+(plan mode's design phase, or a direct ask) and is usually a deliberate invocation where
+`opus` is a legitimate answer, not a mistake; forcing it cheap would be wrong as often as
+right. `general-purpose` is the harder call — it's the model's fallback when nothing else
+fits, which is exactly when nobody's thinking about cost — but it's excluded from the
+default for the same reason `Plan` is: neither has the volume or the "recon, not judgment"
+shape that makes `Explore` an easy call to force cheap. Add either back with `CHEAP_AGENTS`
+if your usage says otherwise — that's a config change, not a code change.
 
 Deny rather than ask, deliberately: the fix is the model's to make — add one parameter and
 retry — not a decision worth interrupting you for on every dispatch. `deny` is also the
@@ -64,23 +75,22 @@ moment it has something to say.
 
 | Env var | Effect |
 |---|---|
-| `CHEAP_EXPLORE_DISABLE=1` | Turns the gate off entirely. |
-| `CHEAP_EXPLORE_AGENTS` | Comma-separated override of the gated list. Default `Explore,Plan,general-purpose`. |
+| `CHEAP_AGENTS_DISABLE=1` | Turns the gate off entirely. |
+| `CHEAP_AGENTS` | Comma-separated override of the gated list. Default `Explore`. |
 
-Add other unpinned agents your setup exposes, e.g.
-`CHEAP_EXPLORE_AGENTS="Explore,Plan,general-purpose,claude"`.
+Add other unpinned agents your setup exposes, e.g. `CHEAP_AGENTS="Explore,general-purpose"`
+or, on a harness with its own catch-all agent, `CHEAP_AGENTS="Explore,claude"`. Allowed
+tiers (`haiku`, `sonnet`) are not configurable — there's no case here for a third option.
 
 ## If you can't run hooks
 
 Somewhere the hook doesn't reach, the rule has to go back to being prose. Paste this into
-that project's `CLAUDE.md` — it is the paragraph `smart-agents` carried until v1.2.0, and it
-costs the ~118 tokens per session that the hook exists to avoid:
+that project's `CLAUDE.md`:
 
-> Mandatory, no exceptions, including when a phase mandates `Explore` or `Plan`: every
-> dispatch of either must carry the `Agent` tool's `model` parameter (`haiku` for a plain
-> sweep, `sonnet` for a real judgment call). Both default silently to the full session-model
-> rate if you omit it. This never conflicts with a phase mandate — the mandate is about which
-> agent, not which model.
+> `Explore` carries no model pin: every dispatch must set the `Agent` tool's `model`
+> parameter to `haiku` (plain sweep) or `sonnet` (more judgment needed) — never leave it
+> unset, and never set it to `opus`. This holds even when a harness phase mandates `Explore`;
+> the mandate is about which agent, not which model.
 
 Don't paste it if the hook is active. You'd pay the rent and get the enforcement, instead of
 just the enforcement.
@@ -90,30 +100,30 @@ just the enforcement.
 - **A denied dispatch is not free.** The model already spent output tokens composing the
   call, and those are wasted. That is a one-time cost on a miss, traded against a recurring
   per-turn cost for the prose version of this rule — but it is not zero.
-- **It checks that a tier was chosen, not that it was the right one.** `model: opus` passes
-  the gate. An explicit expensive choice is a deliberate decision; only the silent fallback
-  is a bug.
+- **`Plan` and `general-purpose` are unpinned too, and ungated by default.** See "What it
+  does" above for why — low volume and usually-deliberate invocation for `Plan`, a genuine
+  but weaker case for `general-purpose`. If your usage differs, add them via `CHEAP_AGENTS`.
 - **If a Claude Code build doesn't expose `model` on the `Agent` tool, this deadlocks.** The
   model would retry, get denied again, and have no way to comply. Nothing here detects that
-  situation. If gated dispatches start failing repeatedly, set `CHEAP_EXPLORE_DISABLE=1` and
+  situation. If gated dispatches start failing repeatedly, set `CHEAP_AGENTS_DISABLE=1` and
   check whether the parameter still exists.
 - **It cannot set your session model.** No hook can. Cheap subagents only help if the
   orchestrator dispatching them isn't itself expensive — see
   `../smart-agents/snippets/settings.recommended.json`.
-- **Agent names are matched literally.** If the harness ever renames `general-purpose` or
-  adds another unpinned built-in, the gate silently stops covering it. Update
-  `CHEAP_EXPLORE_AGENTS` or the default list in the script.
+- **Agent names are matched literally.** If the harness ever renames `Explore` or you add a
+  name that doesn't exist, the gate silently does nothing for that name. Check `CHEAP_AGENTS`
+  against your harness's actual agent list.
 
 ## Verification
 
 Run the hook directly with a synthetic payload — no session needed:
 
 ```bash
-printf '%s' '{"tool_name":"Agent","tool_input":{"subagent_type":"Explore"}}' | bash plugins/cheap-explore/hooks/require-model-pin.sh
+printf '%s' '{"tool_name":"Agent","tool_input":{"subagent_type":"Explore","model":"opus"}}' | bash plugins/cheap-explore/hooks/require-model-pin.sh
 ```
 
-That should print a `permissionDecision: "deny"` JSON object. This one should print nothing
-and exit 0:
+That should print a `permissionDecision: "deny"` JSON object — an explicit `opus` is denied
+same as a missing `model`. This one should print nothing and exit 0:
 
 ```bash
 printf '%s' '{"tool_name":"Agent","tool_input":{"subagent_type":"Explore","model":"haiku"}}' | bash plugins/cheap-explore/hooks/require-model-pin.sh

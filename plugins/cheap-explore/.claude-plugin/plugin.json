@@ -1,7 +1,7 @@
 {
   "name": "cheap-explore",
-  "version": "1.0.0",
-  "description": "Zero-cost enforcement of an explicit model tier on the built-in Explore, Plan, and general-purpose agents. They carry no model pin, so a dispatch that omits the Agent tool's model parameter silently runs at the full session-model rate. A PreToolUse hook denies those dispatches and tells the model to retry with haiku or sonnet. Injects nothing at session start — costs tokens only on an actual miss.",
+  "version": "1.1.0",
+  "description": "Zero-cost enforcement that the built-in Explore agent stays on a cheap model tier. Explore carries no model pin, so a dispatch can silently run at the full session-model rate, or be explicitly set to opus for a plain file sweep. A PreToolUse hook denies any Explore dispatch whose model isn't haiku or sonnet and tells the model to retry. Injects nothing at session start — costs tokens only on an actual miss. Gated agent list is configurable via CHEAP_AGENTS.",
   "author": {
     "name": "Viktor Moyseyenko",
     "email": "vityok@gmail.com"

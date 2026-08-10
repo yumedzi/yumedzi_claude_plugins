@@ -1,5 +1,5 @@
 {
-  "description": "cheap-explore plugin hooks — denies Explore/Plan/general-purpose dispatches that omit an explicit model tier.",
+  "description": "cheap-explore plugin hooks — denies Explore dispatches whose model isn't haiku or sonnet.",
   "hooks": {
     "PreToolUse": [
       {
