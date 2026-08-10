@@ -16,12 +16,6 @@ for when you need a synthesized conclusion out of ambiguous candidates. If a pha
 specific built-in agent (plan mode's exploration phase mandates `Explore`), comply — don't
 substitute `scout`.
 
-Mandatory, no exceptions, including when a phase mandates `Explore` or `Plan`: every dispatch
-of either must carry the `Agent` tool's `model` parameter (`haiku` for a plain sweep, `sonnet`
-for a real judgment call). Both default silently to the full session-model rate if you omit
-it. This never conflicts with a phase mandate — the mandate is about which agent, not which
-model.
-
 ### Workflow gate
 
 Plan before executing on anything non-trivial: state the approach, let the user weigh in,

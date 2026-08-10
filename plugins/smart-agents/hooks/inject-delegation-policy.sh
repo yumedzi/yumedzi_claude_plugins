@@ -17,17 +17,15 @@ set -u
 
 # The policy text. Edit here freely — json_escape below handles the escaping.
 read -r -d '' POLICY <<'POLICY_EOF' || true
-smart-agents is installed: scout (haiku), researcher (sonnet), worker (sonnet), and deep-thinker (opus) are available for delegation. Route substantive work to whichever fits by default, instead of doing it yourself — you pick the agent, the user doesn't pick a model per task. Built-in Explore / general-purpose are for a different shape of task: you need a synthesized conclusion, not a file map. Each agent's own description says when it applies; don't re-derive that here.
+smart-agents is installed: scout (haiku), researcher (sonnet), worker (sonnet), deep-thinker (opus). Route substantive work to whichever fits instead of doing it yourself — you pick the agent, the user doesn't pick a model per task. Each agent's own description says when it applies; don't re-derive that here.
 
-Do it yourself when delegating buys nothing: a single grep, a small lookup, or output you need verbatim. Judge by how much of the result you'd have to read back anyway, not by how small the task sounds.
+Do it yourself when delegating buys nothing: a single grep, a small lookup, output you need verbatim. Judge by how much of the result you'd read back anyway, not by how small the task sounds.
 
-Simple recon — an area named but not the exact files — goes to scout, not Explore; reserve Explore for when a conclusion requires sifting ambiguous candidates. If a harness phase mandates a specific built-in agent — plan mode's exploration phase mandates Explore, its design phase mandates Plan — comply, don't substitute scout.
+Send simple recon — an area named but not the exact files — to scout, not Explore. Reserve Explore and general-purpose for when you need a synthesized conclusion out of ambiguous candidates, not a file map. When a harness phase mandates a built-in (plan mode mandates Explore for exploration, Plan for design), comply — don't substitute scout.
 
-Mandatory, no exceptions, including when a phase mandates Explore or Plan: every single dispatch of Explore or Plan must carry the Agent tool's model parameter (haiku for a plain sweep, sonnet for a real judgment call). Those two carry no model pin and silently default to the full session-model rate if you omit it. This never conflicts with a phase mandate — the mandate is about which agent, not which model — so there is no case where skipping the parameter is correct.
+Escalate cheap-first: start on whichever agent plausibly fits. A worker that fails or stalls twice stops and reports up; dispatch deep-thinker to diagnose, then hand its plan to a fresh worker. Never spawn deep-thinker from inside a worker — that skips a cost call that is yours.
 
-Escalate cheap-first. Start on whichever agent plausibly fits. A worker that fails or stalls twice stops and reports up instead of thrashing — you then dispatch deep-thinker to diagnose, and hand its fix plan to a fresh worker. Never spawn deep-thinker from inside a worker; that skips the cost call that belongs to the orchestrator.
-
-Why this pays off: your context is the recurring cost — you re-read all of it every turn — while a subagent's context is thrown away the moment it reports back. So: decide and speak to the user yourself, never delegate that final judgment. Give a subagent everything it needs up front; it starts from nothing. Fire off independent dispatches in the same turn so they run in parallel. Before editing, re-read the couple of files you're actually about to change — a scout's summary is not the literal bytes. Keep subagent reports terse and keyed to file:line; their prose is the real output-token cost, not their existence.
+Your context is the recurring cost; a subagent's is discarded the moment it reports. So: decide and speak to the user yourself, never delegate that. Give a subagent everything it needs up front — it starts from nothing. Fire independent dispatches in one turn so they run in parallel. Re-read the files you're about to edit; a scout summary is not the literal bytes. Require terse reports keyed to file:line — their prose is the real cost, not their existence.
 POLICY_EOF
 
 # json_escape <string>: escape for embedding inside a JSON string literal.

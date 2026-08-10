@@ -39,15 +39,26 @@ session, so the policy doesn't silently disappear partway through a long session
 The policy also covers the built-in `Explore` and `Plan` agents, which this plugin cannot
 replace: simple recon goes to `scout` instead, and whenever a harness phase mandates `Explore`
 or `Plan` (plan mode does, for its exploration and design phases respectively), the policy says
-to comply with that restriction but always pass the `Agent` tool's `model` parameter explicitly
-— those two built-ins carry no model pin and otherwise default to the session model.
+to comply with that restriction rather than substituting `scout`.
 
-Measured cost of that injection: ~2,550 bytes (~640 tokens), written to the prompt cache
+Measured cost of that injection: 1,591 bytes (~397 tokens), written to the prompt cache
 once per SessionStart event and read back on every subsequent turn. On Opus 5 pricing that's
-roughly $0.0077 to write and $0.0007 per turn to read — under 8 cents for a 100-turn
+roughly $0.005 to write and $0.0004 per turn to read — about 5 cents for a 100-turn
 session. The rent is not the reason to think twice about this hook; if you'd rather not pay
 even that, drop `hooks/` and keep only `agents/` — the four agents still work standalone,
 you'll just need to ask for them by name.
+
+## Pairs with cheap-explore
+
+Until v1.2.0 the policy also carried a paragraph demanding that every `Explore` / `Plan`
+dispatch pass the `Agent` tool's `model` parameter, since those built-ins have no model pin
+and otherwise fall back to the session model. That paragraph is gone. It was ~118 tokens of
+rent on every turn of every session, and it was only ever a request — nothing checked that
+the orchestrator complied.
+
+[`cheap-explore`](../cheap-explore) now enforces the same rule as a `PreToolUse` deny: it
+costs nothing until a dispatch actually omits the parameter, and it cannot be ignored. Install
+it alongside this plugin if you want that guarantee. Neither plugin depends on the other.
 
 ## deep-thinker confirmation gate
 
@@ -87,18 +98,23 @@ itself is cheap to run and no hook or CLAUDE.md snippet can set that for you.
 ## Three honest caveats
 
 - **The `Agent` tool listed in each agent's frontmatter is not a spawn sandbox.** It reflects
-  intent — "this agent is meant to delegate to these others" — but once an agent is running
-  as a dispatched subagent, nothing in the harness actually enforces that list. The cost
-  hierarchy (never spawn `deep-thinker` from `worker`) lives in the agent prompts and the
-  hook text as an instruction, not as tooling that blocks the call.
+  intent — "this agent is meant to delegate to these others" — but nothing in the harness
+  enforces that list once an agent is running, so an agent can dispatch outside it. The one
+  part of the cost hierarchy that *is* backed by tooling is `deep-thinker`: hooks also run
+  inside subagents, and `PreToolUse` fires on a subagent's tool calls exactly as it does on
+  the main thread (the payload gains `agent_id` / `agent_type` identifying the caller), so
+  the confirmation gate below catches a nested dispatch from a `worker`, not just one you
+  issue yourself. What that gate does *not* pin down is how a `permissionDecision: "ask"`
+  resolves when you aren't attending the subagent's execution — untested here. The rest of
+  the hierarchy is instruction only.
 - **This plugin cannot set your main model.** No hook can. Delegation only saves money if
   the orchestrator itself runs on a reasonably cheap model — see
   `snippets/settings.recommended.json` for a starting point (`"model": "sonnet"`).
-- **The `model` override on Explore/Plan dispatches is a parameter of the `Agent` tool, not
-  something this plugin enforces.** The policy text asks the orchestrator to pass it; nothing
-  checks that it did. If a Claude Code build doesn't expose the parameter, or the orchestrator
-  just omits it, the dispatch silently falls back to the session model and the saving disappears
-  with no error or warning anywhere.
+- **Nothing here stops an unpinned `Explore` or `Plan` dispatch from running at session-model
+  rates.** The policy tells the orchestrator to prefer `scout` for recon, but if it dispatches
+  a built-in anyway without a `model` parameter, that sweep runs at full price with no error
+  or warning. Install [`cheap-explore`](../cheap-explore) if you want that blocked rather than
+  merely discouraged.
 
 ## Attribution
 
