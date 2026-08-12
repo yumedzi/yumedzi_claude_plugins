@@ -28,10 +28,13 @@ hook payload, and finds the most recent main-thread assistant turn's `usage` blo
 thread). Usage is `input_tokens + cache_creation_input_tokens + cache_read_input_tokens`.
 
 The context window limit isn't given anywhere in the hook payload, so it's inferred from
-the active model: everything currently shipping (Opus/Sonnet/Haiku/Fable) defaults to
-200,000. If usage already exceeds the assumed limit — e.g. a 1M-context session — the
-script escalates through `[200000, 500000, 1000000]` until usage fits, so it self-corrects
-within a turn or two without configuration.
+the active model name reported in the transcript's `usage` block. Per
+[docs.claude.com/en/docs/build-with-claude/context-windows](https://docs.claude.com/en/docs/build-with-claude/context-windows),
+Opus 4.6+, Sonnet 4.6+/5, and Fable/Mythos default to a 1M-token window; Haiku (all
+versions) and Sonnet 4.5 stay at 200,000. The hook matches on substrings of the model id
+(`"haiku"`, `"sonnet-4-5"`) rather than an exact list, so it keeps working across future
+point releases without a code change — but it falls back to the smaller 200,000 window if
+the model field is ever missing.
 
 Each threshold fires **once per session**: state is a one-byte file per session ID under
 `${TMPDIR:-/tmp}/claude-context-guard/`, tracking the highest tier already warned. A prompt
@@ -45,7 +48,7 @@ All via environment variables (e.g. in `settings.json`'s `env` block):
 |---|---|---|
 | `CONTEXT_GUARD_WARN1` | `35` | First threshold, percent. |
 | `CONTEXT_GUARD_WARN2` | `50` | Second threshold, percent. |
-| `CONTEXT_GUARD_LIMIT` | *(inferred)* | Force the context window size in tokens; skips model-based inference and tier escalation entirely. |
+| `CONTEXT_GUARD_LIMIT` | *(inferred)* | Force the context window size in tokens; skips model-based inference entirely. |
 | `CONTEXT_GUARD_DISABLE` | *(unset)* | Set to `1` to make the hook a no-op. |
 
 ## Cost
@@ -63,8 +66,9 @@ transcript Claude reads. The wall-clock cost is one `python3` invocation per pro
   number; acting on it (running `/compact`, wrapping up, starting a fresh session) is
   manual. See [code.claude.com/docs/en/hooks](https://code.claude.com/docs/en/hooks).
 - **The limit is inferred, not reported.** No hook payload field advertises the context
-  window size. A very large session on a 1M-context model may briefly read as a high
-  percentage of 200k before the escalation logic promotes it to the next tier. Set
-  `CONTEXT_GUARD_LIMIT` up front if you know you're running an extended window.
+  window size directly — it's derived from a substring match on the model name, which
+  breaks if a future model changes its default window without a name change (e.g. a
+  200k-by-default model gaining an opt-in 1M beta). Set `CONTEXT_GUARD_LIMIT` up front if
+  you know the inference will be wrong for your session.
 - **Usage lags by one turn.** The number reflects the last completed assistant turn's
   `usage` block, not a live count of the prompt currently being submitted.

@@ -100,17 +100,16 @@ def main():
         except ValueError:
             limit = 200000
     else:
-        limit = 200000  # every current Opus/Sonnet/Haiku/Fable id defaults here
-        tiers = [200000, 500000, 1000000]
-        # Self-correct: if usage already exceeds the assumed limit, the
-        # session must be on a larger window (e.g. 1M-context beta) — no
-        # payload field advertises this directly, so escalate tiers.
-        for tier in tiers:
-            if used <= tier:
-                limit = tier
-                break
+        # Per docs.claude.com/en/docs/build-with-claude/context-windows:
+        # Opus 4.6+, Sonnet 4.6+/5, and Fable/Mythos default to a 1M-token
+        # window; only Haiku (all versions) and Sonnet 4.5 stay at 200k.
+        model_l = (model or "").lower()
+        if "haiku" in model_l or "sonnet-4-5" in model_l:
+            limit = 200000
+        elif model_l:
+            limit = 1000000
         else:
-            limit = tiers[-1]
+            limit = 200000  # unknown model: assume the smaller window
 
     if limit <= 0:
         return
