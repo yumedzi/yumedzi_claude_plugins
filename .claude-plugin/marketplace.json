@@ -2,7 +2,7 @@
   "name": "yumedzi-claude-plugins",
   "metadata": {
     "description": "Personal Claude Code plugins",
-    "version": "1.4.0"
+    "version": "1.5.0"
   },
   "owner": {
     "name": "Viktor Moyseyenko",
@@ -12,7 +12,7 @@
     {
       "name": "smart-agents",
       "description": "Four model-pinned delegation agents — scout (Haiku recon), researcher (Sonnet web briefs), worker (Sonnet code changes), deep-thinker (Opus reasoning). Cuts costs by routing to the cheapest model that can do the job. SessionStart hook injects delegation discipline every session; deep-thinker dispatch asks for confirmation first since it's the most expensive tier. Pairs with cheap-explore, which pins the built-in Explore agent this plugin cannot replace.",
-      "version": "1.2.0",
+      "version": "1.3.0",
       "author": {
         "name": "Viktor Moyseyenko",
         "email": "vityok@gmail.com"
@@ -36,7 +36,7 @@
     {
       "name": "cheap-explore",
       "description": "Zero-cost enforcement that the built-in Explore agent stays on a cheap model tier. Explore carries no model pin, so a dispatch can silently run at the full session-model rate, or be explicitly set to opus for a plain file sweep. A PreToolUse hook denies any Explore dispatch whose model isn't haiku or sonnet and tells the model to retry. Injects nothing at session start — costs tokens only on an actual miss. Gated agent list is configurable via CHEAP_AGENTS.",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "author": {
         "name": "Viktor Moyseyenko",
         "email": "vityok@gmail.com"
@@ -59,7 +59,7 @@
     {
       "name": "context-guard",
       "description": "Zero-cost context-usage warning. A UserPromptSubmit hook reads the session transcript, infers the context window size from the active model, and shows a one-time systemMessage warning at 35% and again at 50% usage. Never sends anything to the model — the warning never appears in the transcript and costs no tokens.",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "author": {
         "name": "Viktor Moyseyenko",
         "email": "vityok@gmail.com"
