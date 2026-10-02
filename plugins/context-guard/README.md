@@ -6,6 +6,12 @@ A single `UserPromptSubmit` hook that warns you when a session's context usage c
 and never appears in the session transcript, so it cannot inflate the context it's warning
 you about.
 
+## In action
+
+The warning shows up under your prompt as UI-only text. It is not part of the transcript:
+
+![context-guard warning at 42% of a 1M window](images/context-warning.png)
+
 ## Install
 
 ```
@@ -30,7 +36,8 @@ thread). Usage is `input_tokens + cache_creation_input_tokens + cache_read_input
 The context window limit isn't given anywhere in the hook payload, so it's inferred from
 the active model name reported in the transcript's `usage` block. Per
 [docs.claude.com/en/docs/build-with-claude/context-windows](https://docs.claude.com/en/docs/build-with-claude/context-windows),
-Opus 4.6+, Sonnet 4.6+/5, and Fable/Mythos default to a 1M-token window; Haiku (all
+Opus 4.6+ (including 5 and 5.5), Sonnet 4.6+ (including 5 and 5.5), and Fable/Mythos default
+to a 1M-token window; Haiku (all
 versions) and Sonnet 4.5 stay at 200,000. The hook matches on substrings of the model id
 (`"haiku"`, `"sonnet-4-5"`) rather than an exact list, so it keeps working across future
 point releases without a code change — but it falls back to the smaller 200,000 window if
@@ -54,8 +61,16 @@ All via environment variables (e.g. in `settings.json`'s `env` block):
 ## Cost
 
 Genuinely zero model tokens: `systemMessage` is UI-only and is never part of the prompt or
-transcript Claude reads. The wall-clock cost is one `python3` invocation per prompt
-(reading ≤512KB off disk), typically well under 50ms.
+transcript Claude reads. The wall-clock cost is one Python invocation per prompt
+(reading ≤512KB off disk), typically well under 50ms, plus a trivial probe to find a
+working interpreter.
+
+## Requirements
+
+`bash` and Python 3 on `PATH` (as `python3` or `python` — the hook tries both and skips a
+broken Microsoft Store `python3` stub). On Windows, hooks run through Git Bash, which
+Claude Code already requires there. With no working Python the hook does nothing — no
+warning, no error.
 
 ## Caveats
 
