@@ -4,16 +4,41 @@ Four delegation agents, each pinned to the cheapest model tier that can do the j
 SessionStart hook that reminds the orchestrator to actually route work to them instead of
 doing everything itself.
 
-| Agent | Tier | Current model | $/MTok in | $/MTok out | Dispatch when |
-|---|---|---|---|---|---|
-| `scout` | `haiku` | Haiku 4.5 | $1 | $5 | An area is named but not the exact files, or orienting would take 5+ greps/reads. Read-only. |
-| `researcher` | `sonnet` | Sonnet 5 | $3 ($2 intro thru 2026-08-31) | $15 ($10 intro) | An open-ended external question needs several sources triangulated. |
-| `worker` | `sonnet` | Sonnet 5 | $3 ($2 intro thru 2026-08-31) | $15 ($10 intro) | A self-contained code change with full context given up front. |
-| `deep-thinker` | `opus` | Opus 5 | $5 | $25 | Architecture tradeoffs, root-cause analysis, or a worker that failed twice and reported up. Orchestrator-only, read-only. |
+| Agent | Tier | Current model | Effort | $/MTok in | $/MTok out | Dispatch when |
+|---|---|---|---|---|---|---|
+| `scout` | `haiku` | Haiku 4.5 | – | $1 | $5 | An area is named but not the exact files, or orienting would take 5+ greps/reads. Read-only. |
+| `researcher` | `sonnet` | Sonnet 5.5 | `medium` | $2 | $10 | An open-ended external question needs several sources triangulated. |
+| `worker` | `sonnet` | Sonnet 5.5 | `high` | $2 | $10 | A self-contained code change with full context given up front. |
+| `deep-thinker` | `opus` | Opus 5.5 | `xhigh` | $4 | $20 | Architecture tradeoffs, root-cause analysis, or a worker that failed twice and reported up. Orchestrator-only, read-only. |
 
 Agents are pinned by **tier alias** (`haiku` / `sonnet` / `opus`), not an exact model ID, so
 the plugin keeps routing to "the current Haiku-tier model" rather than needing a version
-bump every time a new model ships in that tier.
+bump every time a new model ships in that tier. Prices above are as of Opus 5.5 / Sonnet 5.5
+(2026-10); the routing itself never needed updating for that release.
+
+Effort is pinned in each agent's frontmatter (`effort:`), which is the only lever — the
+`Agent` tool has no per-dispatch effort override, and an agent with no `effort:` inherits
+the session's level (Claude Code defaults to `xhigh`). Why these values:
+
+- **`researcher` at `medium`.** Anthropic's published effort curves for research and
+  knowledge work are nearly flat — `medium` matched `high` on accuracy for noticeably less
+  spend. Without the pin it would run at whatever the session runs at, often `xhigh`.
+- **`worker` stays at `high`.** For coding the curve is a real tradeoff: each step down
+  costs a few points of pass rate for a substantially lower cost per task. Here a worker
+  failure isn't retried at a higher effort — after two it escalates to `deep-thinker` on
+  Opus at `xhigh`, so a failure is the expensive path. The "run low, re-run failures
+  higher" pattern only pays when the retry is the same cheap model. If your worker tasks
+  are mostly mechanical edits, `medium` is a reasonable local override.
+- **`deep-thinker` at `xhigh`.** Opus 5.5 defaults to `medium` (one level below Opus 5);
+  the explicit pin keeps the escalation target thinking hard.
+- **`scout` unpinned.** Haiku 4.5 doesn't take an effort setting.
+
+## In action
+
+On a session running Sonnet, the orchestrator hands off "find the AI provider settings
+code" to `scout` instead of reading files on its own:
+
+![orchestrator dispatching scout for recon](images/scout-dispatch.png)
 
 ## Install
 
@@ -42,9 +67,9 @@ or `Plan` (plan mode does, for its exploration and design phases respectively), 
 to comply with that restriction rather than substituting `scout`.
 
 Measured cost of that injection: 1,591 bytes (~397 tokens), written to the prompt cache
-once per SessionStart event and read back on every subsequent turn. On Opus 5 pricing that's
-roughly $0.005 to write and $0.0004 per turn to read — about 5 cents for a 100-turn
-session. The rent is not the reason to think twice about this hook; if you'd rather not pay
+once per SessionStart event and read back on every subsequent turn. On Opus 5.5 pricing
+($4 base, 1-hour cache write at 2x, cache read $0.20/MTok) that's roughly $0.003 to write
+and under $0.0001 per turn to read — about 1 cent for a 100-turn session. The rent is not the reason to think twice about this hook; if you'd rather not pay
 even that, drop `hooks/` and keep only `agents/` — the four agents still work standalone,
 you'll just need to ask for them by name.
 
@@ -98,6 +123,14 @@ project, the same as any other project instructions, so only copy it if you actu
 that. `snippets/settings.recommended.json` pairs with it — it sets the orchestrator's own
 model floor (`"model": "sonnet"`), since delegation only saves money if the orchestrator
 itself is cheap to run and no hook or CLAUDE.md snippet can set that for you.
+
+## Requirements
+
+`bash` and Python 3 on `PATH` (as `python3` or `python`) for the `deep-thinker` gate; the
+SessionStart policy hook is pure bash on purpose so it loads even without Python. On
+Windows, hooks run through Git Bash, which Claude Code already requires there. If no
+working Python 3 is found (e.g. only the Microsoft Store `python3` stub), the gate **fails
+open** — `deep-thinker` dispatches without the confirmation prompt, silently.
 
 ## Three honest caveats
 

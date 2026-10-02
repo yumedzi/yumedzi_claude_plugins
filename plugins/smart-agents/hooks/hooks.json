@@ -19,7 +19,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/gate-deep-thinker.sh\"",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/gate-deep-thinker.sh\"",
             "shell": "bash",
             "timeout": 5
           }

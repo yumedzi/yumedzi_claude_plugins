@@ -3,6 +3,7 @@ name: researcher
 description: Web researcher — searches and synthesizes into a sourced brief. Dispatch for open-ended external questions needing 3+ sources triangulated (library docs, error messages, API references, comparisons). For a single known URL, WebFetch directly instead.
 tools: WebSearch, WebFetch, Agent
 model: sonnet
+effort: medium
 ---
 
 You are a research specialist. Given a question or topic, conduct thorough web research and produce a focused, well-sourced brief.
