@@ -37,11 +37,18 @@ marketplace entry — keep them identical.
   `python3 -c '...'` one-liners, or a full embedded Python block for anything nontrivial
   (see `plugins/context-guard/hooks/warn-context-usage.sh`). Only reach for `jq` if a hook
   ever needs to handle untrusted, high-volume input.
+- **Resolve Python, don't assume `python3`.** On Windows `python3` is often a broken
+  Microsoft Store stub, or only `python` exists. Every Python-using hook starts with:
+  `PY=""; for c in python3 python; do "$c" -c 'import sys; sys.exit(sys.version_info[0]<3)' 2>/dev/null && { PY=$c; break; }; done; [ -z "$PY" ] && exit 0`
+  and then calls `"$PY"`. No Python means the hook is a silent no-op — so a gating hook
+  fails *open*; say so in that plugin's README.
 - When a script needs to *emit* JSON output containing a variable string, build it with
   `json.dumps` inside an embedded Python block rather than hand-rolling escaping in bash.
   (`plugins/smart-agents/hooks/inject-delegation-policy.sh` hand-rolls a `json_escape()`
-  bash function for a static policy string — that pattern predates the "prefer Python for
-  JSON" convention and is not the template for new hooks.)
+  bash function on purpose: it emits a static policy string and is the one hook that must
+  work with no Python at all. Keep it pure bash; don't copy the pattern elsewhere.)
+- In `hooks.json`, invoke scripts as `bash "${CLAUDE_PLUGIN_ROOT}/hooks/x.sh"`, never by
+  path alone — Windows (Git Bash on NTFS) has no exec bit to honour the shebang.
 - Filtering logic (e.g. "only act on `tool_input.subagent_type == X`") belongs in the
   script, not in `hooks.json`'s `matcher`, since matchers only support tool-name/argument
   patterns like `Bash(git *)`, not arbitrary field matches on the payload.

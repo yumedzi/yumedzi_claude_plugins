@@ -9,7 +9,7 @@
 #
 # Rules matching the rest of this repo's hooks:
 #   - always exit 0 (never break the prompt path)
-#   - no jq dependency
+#   - no jq dependency; Python 3 resolved as python3 or python
 #   - any unexpected failure is swallowed silently
 set -u
 
@@ -18,6 +18,11 @@ if [ "${CONTEXT_GUARD_DISABLE:-}" = "1" ]; then
   exit 0
 fi
 
+# Resolve a working Python 3: `python3` can be a broken Microsoft Store stub on
+# Windows, and some installs only ship `python`. No Python -> silent no-op.
+PY=""; for c in python3 python; do "$c" -c 'import sys; sys.exit(sys.version_info[0]<3)' 2>/dev/null && { PY=$c; break; }; done
+[ -z "$PY" ] && exit 0
+
 PAYLOAD="$(cat)"
 
 WARN1="${CONTEXT_GUARD_WARN1:-35}"
@@ -25,7 +30,7 @@ WARN2="${CONTEXT_GUARD_WARN2:-50}"
 LIMIT_OVERRIDE="${CONTEXT_GUARD_LIMIT:-}"
 STATE_DIR="${TMPDIR:-/tmp}/claude-context-guard"
 
-CONTEXT_GUARD_PAYLOAD="$PAYLOAD" python3 - "$WARN1" "$WARN2" "$LIMIT_OVERRIDE" "$STATE_DIR" <<'PYEOF' 2>/dev/null
+CONTEXT_GUARD_PAYLOAD="$PAYLOAD" "$PY" - "$WARN1" "$WARN2" "$LIMIT_OVERRIDE" "$STATE_DIR" <<'PYEOF' 2>/dev/null
 import json, sys, os
 
 def main():
@@ -101,8 +106,9 @@ def main():
             limit = 200000
     else:
         # Per docs.claude.com/en/docs/build-with-claude/context-windows:
-        # Opus 4.6+, Sonnet 4.6+/5, and Fable/Mythos default to a 1M-token
-        # window; only Haiku (all versions) and Sonnet 4.5 stay at 200k.
+        # Opus 4.6+ (incl. 5/5.5), Sonnet 4.6+ (incl. 5/5.5), and Fable/Mythos
+        # default to a 1M-token window; only Haiku (all versions) and
+        # Sonnet 4.5 stay at 200k.
         model_l = (model or "").lower()
         if "haiku" in model_l or "sonnet-4-5" in model_l:
             limit = 200000

@@ -34,11 +34,16 @@ if [ "${CHEAP_AGENTS_DISABLE:-}" = "1" ]; then
   exit 0
 fi
 
+# Resolve a working Python 3: `python3` can be a broken Microsoft Store stub on
+# Windows, and some installs only ship `python`. No Python -> silent no-op.
+PY=""; for c in python3 python; do "$c" -c 'import sys; sys.exit(sys.version_info[0]<3)' 2>/dev/null && { PY=$c; break; }; done
+[ -z "$PY" ] && exit 0
+
 PAYLOAD="$(cat)"
 
 # Payload goes through the environment, not stdin — the heredoc below occupies
 # stdin, same as context-guard's hook.
-CHEAP_AGENTS_PAYLOAD="$PAYLOAD" python3 <<'PY' 2>/dev/null
+CHEAP_AGENTS_PAYLOAD="$PAYLOAD" "$PY" <<'PY' 2>/dev/null
 import json, os, sys
 
 DEFAULT_AGENTS = "Explore"
