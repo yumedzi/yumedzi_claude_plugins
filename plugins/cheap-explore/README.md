@@ -9,8 +9,18 @@ happened. Worse, an *explicit* `model: opus` also passes as "a deliberate choice
 though it's still almost always wrong for what `Explore` does. This hook denies both cases
 and tells the model to retry with `haiku` or `sonnet`.
 
-A single `Explore` sweep that reads 30 files costs roughly $0.50–1.00 on Opus versus about
-$0.05 on Haiku. That is the whole reason this plugin exists.
+On input price alone Opus 5.5 ($4/MTok) is 2x Sonnet 5.5 ($2) and 4x Haiku 4.5 ($1). A
+sweep that reads 30 files — call it ~150k input tokens across its turns — lands around
+$0.60 on Opus, $0.30 on Sonnet, $0.15 on Haiku, before the session model's higher default
+effort adds thinking tokens on top. Rough numbers, but the ratio is the point, and it is
+the whole reason this plugin exists.
+
+## In action
+
+An `Explore` dispatch with no `model` gets denied; the orchestrator retries with
+`model: sonnet` and can say why it picked sonnet over haiku:
+
+![Explore dispatch denied, then retried with model: sonnet](images/explore-gate-in-action.png)
 
 ## Install
 
@@ -95,7 +105,16 @@ that project's `CLAUDE.md`:
 Don't paste it if the hook is active. You'd pay the rent and get the enforcement, instead of
 just the enforcement.
 
+## Requirements
+
+`bash` and Python 3 on `PATH` (as `python3` or `python` — the hook tries both and skips a
+broken Microsoft Store `python3` stub). On Windows, hooks run through Git Bash, which
+Claude Code already requires there.
+
 ## Caveats
+
+- **No Python means no gate.** If no working Python 3 is found the hook exits silently and
+  every `Explore` dispatch goes through unchecked — it fails open, not closed.
 
 - **A denied dispatch is not free.** The model already spent output tokens composing the
   call, and those are wasted. That is a one-time cost on a miss, traded against a recurring
