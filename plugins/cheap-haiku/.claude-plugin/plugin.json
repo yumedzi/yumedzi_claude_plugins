@@ -1,0 +1,11 @@
+{
+  "name": "cheap-haiku",
+  "version": "1.0.0",
+  "description": "Keeps Haiku 5.5 on its cheap tier. Haiku 5.5 bills 5x on every token once a request's prompt passes 100k, and its 1M window means nothing compacts until ~967k. Hooks project the next request's size and warn via systemMessage before the main thread crosses (optional hard stop via CHEAP_HAIKU_MODE=block), ask before /model haiku on an already-large context, and report Haiku subagents that crossed. Zero model tokens in the default mode.",
+  "author": {
+    "name": "Viktor Moyseyenko",
+    "email": "vityok@gmail.com"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/yumedzi/yumedzi_claude_plugins"
+}

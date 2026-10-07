@@ -1,0 +1,54 @@
+{
+  "description": "cheap-haiku plugin hooks — warns (systemMessage, user-visible only) before a Haiku 5.5 session crosses the 100k-token price tier, asks before /model haiku on a large context, and reports Haiku subagents that crossed.",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/haiku-cliff.sh\"",
+            "shell": "bash",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolBatch": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/haiku-cliff.sh\"",
+            "shell": "bash",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreModelSwitch": [
+      {
+        "matcher": ".*haiku.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/haiku-cliff.sh\"",
+            "shell": "bash",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/haiku-cliff.sh\"",
+            "shell": "bash",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}
