@@ -36,12 +36,14 @@ thread). Usage is `input_tokens + cache_creation_input_tokens + cache_read_input
 The context window limit isn't given anywhere in the hook payload, so it's inferred from
 the active model name reported in the transcript's `usage` block. Per
 [docs.claude.com/en/docs/build-with-claude/context-windows](https://docs.claude.com/en/docs/build-with-claude/context-windows),
-Opus 4.6+ (including 5 and 5.5), Sonnet 4.6+ (including 5 and 5.5), and Fable/Mythos default
-to a 1M-token window; Haiku (all
-versions) and Sonnet 4.5 stay at 200,000. The hook matches on substrings of the model id
-(`"haiku"`, `"sonnet-4-5"`) rather than an exact list, so it keeps working across future
-point releases without a code change — but it falls back to the smaller 200,000 window if
-the model field is ever missing.
+Opus 4.6+ (including 5 and 5.5), Sonnet 4.6+ (including 5 and 5.5), Haiku 5.5, and
+Fable/Mythos default to a 1M-token window; Haiku 4.5 and older and Sonnet 4.5 stay at
+200,000. The hook matches the 200k models by pattern on the model id (`haiku-3`/`haiku-4`,
+`3-haiku`/`3-5-haiku`, `sonnet-4-5`) and treats everything else as 1M, so it keeps working
+across future point releases without a code change — but it falls back to the smaller
+200,000 window if the model field is ever missing. On Haiku 5.5 the context window is not
+the expensive limit: requests over 100k tokens bill at 5x, which is what
+[`cheap-haiku`](../cheap-haiku) watches.
 
 Each threshold fires **once per session**: state is a one-byte file per session ID under
 `${TMPDIR:-/tmp}/claude-context-guard/`, tracking the highest tier already warned. A prompt

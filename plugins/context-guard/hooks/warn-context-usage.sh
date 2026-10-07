@@ -31,7 +31,7 @@ LIMIT_OVERRIDE="${CONTEXT_GUARD_LIMIT:-}"
 STATE_DIR="${TMPDIR:-/tmp}/claude-context-guard"
 
 CONTEXT_GUARD_PAYLOAD="$PAYLOAD" "$PY" - "$WARN1" "$WARN2" "$LIMIT_OVERRIDE" "$STATE_DIR" <<'PYEOF' 2>/dev/null
-import json, sys, os
+import json, sys, os, re
 
 def main():
     warn1 = float(sys.argv[1])
@@ -106,11 +106,11 @@ def main():
             limit = 200000
     else:
         # Per docs.claude.com/en/docs/build-with-claude/context-windows:
-        # Opus 4.6+ (incl. 5/5.5), Sonnet 4.6+ (incl. 5/5.5), and Fable/Mythos
-        # default to a 1M-token window; only Haiku (all versions) and
-        # Sonnet 4.5 stay at 200k.
+        # Opus 4.6+ (incl. 5/5.5), Sonnet 4.6+ (incl. 5/5.5), Haiku 5.5, and
+        # Fable/Mythos default to a 1M-token window; only Haiku 4.5 and older
+        # and Sonnet 4.5 stay at 200k.
         model_l = (model or "").lower()
-        if "haiku" in model_l or "sonnet-4-5" in model_l:
+        if re.search(r"haiku-[34]|3-5-haiku|3-haiku|sonnet-4-5", model_l):
             limit = 200000
         elif model_l:
             limit = 1000000
