@@ -2,7 +2,7 @@
   "name": "yumedzi-claude-plugins",
   "metadata": {
     "description": "Personal Claude Code plugins",
-    "version": "1.6.0"
+    "version": "1.7.0"
   },
   "owner": {
     "name": "Viktor Moyseyenko",
@@ -99,6 +99,49 @@
         "compaction",
         "warning",
         "zero-cost"
+      ],
+      "license": "MIT"
+    },
+    {
+      "name": "cool-progress",
+      "description": "A slim animated band above the prompt: live progress bar with a position marker, a compact sub-agent panel with pixel mascots, model and estimated cost, and background-task rows with an animated terminal sign.",
+      "version": "0.1.16",
+      "author": {
+        "name": "Viktor Moyseyenko",
+        "email": "vityok@gmail.com"
+      },
+      "source": "./plugins/cool-progress",
+      "repository": "https://github.com/yumedzi/yumedzi_claude_plugins",
+      "category": "productivity",
+      "keywords": [
+        "mod",
+        "ui",
+        "progress",
+        "agents",
+        "background-tasks",
+        "cost",
+        "status"
+      ],
+      "license": "MIT"
+    },
+    {
+      "name": "file-tree",
+      "description": "A side panel tracking the files Claude reads and edits (shimmering while active, green once committed), with diff and full-file views that jump between changed lines.",
+      "version": "0.1.1",
+      "author": {
+        "name": "Viktor Moyseyenko",
+        "email": "vityok@gmail.com"
+      },
+      "source": "./plugins/file-tree",
+      "repository": "https://github.com/yumedzi/yumedzi_claude_plugins",
+      "category": "productivity",
+      "keywords": [
+        "mod",
+        "ui",
+        "files",
+        "diff",
+        "git",
+        "side-panel"
       ],
       "license": "MIT"
     }

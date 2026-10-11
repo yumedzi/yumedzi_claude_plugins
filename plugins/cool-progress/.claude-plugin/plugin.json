@@ -1,0 +1,53 @@
+{
+  "name": "cool-progress",
+  "version": "0.1.16",
+  "description": "A slim animated band above the prompt: live progress bar with a position marker, a compact sub-agent panel with pixel mascots, model and estimated cost, and background-task rows with an animated terminal sign.",
+  "author": { "name": "Viktor Moyseyenko", "email": "vityok@gmail.com" },
+  "license": "MIT",
+  "repository": "https://github.com/yumedzi/yumedzi_claude_plugins",
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "maxAgents": {
+      "type": "number",
+      "title": "Max agent rows",
+      "description": "Most sub-agents listed in the panel (two lines each); the rest collapse into '+N more'.",
+      "default": 4
+    },
+    "estimateSteps": {
+      "type": "number",
+      "title": "Progress pace (steps)",
+      "description": "With no todo list the bar is an estimate: it reaches ~63% after this many model steps, then slows down.",
+      "default": 10
+    },
+    "agentEstimateSteps": {
+      "type": "number",
+      "title": "Agent pace (steps)",
+      "description": "Same estimate for each sub-agent's own bar.",
+      "default": 6
+    },
+    "mascotMap": {
+      "type": "string",
+      "title": "Mascot map",
+      "description": "Pin mascots by agent type or name: 'scout=crab,worker=robot,deep-thinker=wizard'. Others are matched by role keywords.",
+      "default": ""
+    },
+    "defaultMascot": {
+      "type": "string",
+      "title": "Default mascot",
+      "description": "Mascot when no keyword matches: crab, robot, owl, cat, ghost, wizard, or a name from your sprites file.",
+      "default": "crab"
+    },
+    "spritesFile": {
+      "type": "string",
+      "title": "Custom sprites file",
+      "description": "Absolute path to a JSON file of your own pixel mascots (see README).",
+      "default": ""
+    },
+    "showCost": {
+      "type": "boolean",
+      "title": "Show estimated cost",
+      "description": "Show tokens and estimated API cost per agent.",
+      "default": true
+    }
+  }
+}

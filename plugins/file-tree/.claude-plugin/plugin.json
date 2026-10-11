@@ -1,0 +1,12 @@
+{
+  "name": "file-tree",
+  "version": "0.1.1",
+  "description": "A side panel tracking the files Claude reads and edits (shimmering while active, green once committed), with diff and full-file views that jump between changed lines.",
+  "types": "./types/index.d.ts",
+  "author": {
+    "name": "Viktor Moyseyenko",
+    "email": "vityok@gmail.com"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/yumedzi/yumedzi_claude_plugins"
+}
