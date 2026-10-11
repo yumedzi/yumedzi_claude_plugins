@@ -63,6 +63,7 @@ declare module 'claude-code' {
     'cool-progress': {
       run: Run
       agents: Record<string, AgentRow>
+      view: { agents: boolean; tasks: boolean }
       tasks: Record<string, TaskRow>
       sprites: Record<string, Sprite>
       tick: number

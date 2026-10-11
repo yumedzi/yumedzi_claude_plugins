@@ -12,6 +12,7 @@ const agentsA = atom({ plugin: 'cool-progress', key: 'agents' } as const, {} as 
 const tasksA = atom({ plugin: 'cool-progress', key: 'tasks' } as const, {} as Record<string, TaskRow>)
 const spritesA = atom({ plugin: 'cool-progress', key: 'sprites' } as const, {} as Record<string, Sprite>)
 const tickA = atom({ plugin: 'cool-progress', key: 'tick' } as const, 0)
+const viewA = atom({ plugin: 'cool-progress', key: 'view' } as const, { agents: false, tasks: false })
 const PANE = 'cool-progress'
 const enabledA = atom({ plugin: 'cool-progress', key: 'isEnabled' } as const, true)
 
@@ -106,6 +107,21 @@ function costOf(a: AgentRow): number | null {
   }
 
   return null
+}
+
+// Finished rows stay for review; only the oldest finished ones are dropped past this many.
+const KEEP_DONE = 30
+function keepRecent<T extends { status: string; endedAt: number }>(all: Record<string, T>): Record<string, T> {
+  const done = Object.entries(all).filter(([, x]) => x.status !== 'running').sort((x, y) => y[1].endedAt - x[1].endedAt)
+  const drop = new Set(done.slice(KEEP_DONE).map(([id]) => id))
+
+  return drop.size === 0 ? all : Object.fromEntries(Object.entries(all).filter(([id]) => !drop.has(id)))
+}
+
+// Flip a Completed section, then bump the tick so an idle pane (no 1 Hz redraw) repaints at once.
+async function toggleView($: any, key: 'agents' | 'tasks') {
+  await update($, viewA, x => ({ ...x, [key]: !x[key] }))
+  await update($, tickA, n => n + 1)
 }
 
 // ---------------------------------------------------------------- small helpers
@@ -505,7 +521,7 @@ async function draw($: any, e: any, cfg: Cfg, mode: 'band' | 'pane'): Promise<an
   const isRunning = r.active && !isStale
   const isLive = isRunning || r.showDone || busy
   const table: any = $.ui.resolve(e)
-  const { Box, Text } = table
+  const { Box, Text, Button } = table
   const tick = await read($, tickA)
   const sprites = { ...BUILTIN, ...(await read($, spritesA)) }
   const cols: number = e.props.bodyColumns
@@ -570,10 +586,15 @@ async function draw($: any, e: any, cfg: Cfg, mode: 'band' | 'pane'): Promise<an
 
   const rank = (st: string) => (st === 'running' ? 0 : 1)
   const allAgents = Object.values(await read($, agentsA)).sort((x, y) => rank(x.status) - rank(y.status) || y.startedAt - x.startedAt)
-  const shownAgents = allAgents.slice(0, Math.max(1, cfg.maxAgents))
-  const hidden = allAgents.length - shownAgents.length
+  const view = await read($, viewA)
+  const liveAgents = allAgents.filter(a => a.status === 'running')
+  const doneAgents = allAgents.filter(a => a.status !== 'running')
+  const shownAgents = liveAgents.slice(0, Math.max(1, cfg.maxAgents))
+  const hidden = liveAgents.length - shownAgents.length
   const allTasks = Object.values(await read($, tasksA)).sort((x, y) => rank(x.status) - rank(y.status) || y.startedAt - x.startedAt)
-  const shownTasks = allTasks.slice(0, 5)
+  const liveTasks = allTasks.filter(t => t.status === 'running')
+  const doneTasks = allTasks.filter(t => t.status !== 'running')
+  const doneAgentCost = doneAgents.reduce((sum, a) => sum + (costOf(a) ?? 0), 0)
   const costs = allAgents.map(costOf)
   const agentCost = costs.some(c => c !== null) ? costs.reduce<number>((sum, c) => sum + (c ?? 0), 0) : null
   const agentTokens = allAgents.reduce((sum, a) => sum + a.input + a.output + a.cacheRead + a.cacheWrite, 0)
@@ -617,7 +638,7 @@ async function draw($: any, e: any, cfg: Cfg, mode: 'band' | 'pane'): Promise<an
   const tiles: [string, string, string | undefined, string][] = [
     ['SESSION COST', sessionCost === null ? '—' : realMoney(sessionCost), '#fbbf24', 'coin'],
     [isRunning ? 'THIS TURN' : 'LAST TURN', turnCost < 0 ? '—' : realMoney(turnCost), turnCost < 0 ? undefined : '#fbbf24', 'clock'],
-    ['AGENTS (EST.)', allAgents.length === 0 ? '—' : money(agentCost), allAgents.length === 0 ? undefined : '#fbbf24', 'robot'],
+    ['AGENTS', allAgents.length === 0 ? '—' : money(agentCost), allAgents.length === 0 ? undefined : '#fbbf24', 'robot'],
     ['CONTEXT', ctxWindow > 0 ? (innerW < 460 ? `${ctxPct}% · ${tfmt(ctxTokens)}` : `${tfmt(ctxTokens)} / ${tfmt(ctxWindow)}`) : '—', ctxWindow > 0 ? pctColor(ctxPct) : undefined, 'chip'],
     ...limits.map((l): [string, string, string | undefined, string] => [l.kind === 'five_hour' ? '5H LIMIT' : l.kind === 'seven_day' ? '7D LIMIT' : l.kind.toUpperCase(), `${Math.round(l.percentUsed)}%`, pctColor(l.percentUsed), 'clock']),
   ]
@@ -640,9 +661,9 @@ async function draw($: any, e: any, cfg: Cfg, mode: 'band' | 'pane'): Promise<an
       </Box>
 
       <Box flexDirection="column" gap={1} {...card}>
-        {hdr('AGENTS', `${runningAgents.length} running · ${allAgents.length} this turn${cfg.showCost && allAgents.length > 0 ? ' · ' + money(agentCost) + ' est' : ''}`, '#a78bfa', 'robot', runningAgents.length > 0, `${runningAgents.length} running`)}
+        {hdr('AGENTS', `${runningAgents.length} running · ${doneAgents.length} done${cfg.showCost && allAgents.length > 0 ? ' · ' + money(agentCost) : ''}`, '#a78bfa', 'robot', runningAgents.length > 0, `${runningAgents.length} running`)}
         {allAgents.length === 0 && <Text dimColor>No sub-agents yet. They show up here as Claude spawns them.</Text>}
-        {shownAgents.map((a, idx) => {
+        {[...shownAgents, ...(view.agents ? doneAgents : [])].map((a, idx) => {
           const isRun = a.status === 'running'
           const sp = sprites[a.sprite] ?? BUILTIN.crab!
           const frame = Math.floor((tick + a.startedAt) / 4) % sp.frames.length
@@ -681,20 +702,26 @@ async function draw($: any, e: any, cfg: Cfg, mode: 'band' | 'pane'): Promise<an
                 <Box flexDirection="row" flexWrap="wrap" columnGap={2} rowGap={0}>
                   <Box flexShrink={0}><Text dimColor>{`${a.tools} tools · ${clock((a.endedAt || now) - a.startedAt)}`}</Text></Box>
                   <Box flexShrink={0}><Text color={a.ctx > 0 ? pctColor(cpct) : undefined} dimColor={a.ctx === 0}>{`ctx ${tfmt(a.ctx)} / ${tfmt(cmax)} · ${cpct}%`}</Text></Box>
-                  {cfg.showCost && <Box flexShrink={0}><Text color="#fbbf24">{`${tfmt(a.input + a.output + a.cacheRead + a.cacheWrite)} tok · ${money(costOf(a))} est`}</Text></Box>}
+                  {cfg.showCost && <Box flexShrink={0}><Text color="#fbbf24">{`${tfmt(a.input + a.output + a.cacheRead + a.cacheWrite)} tok · ${money(costOf(a))}`}</Text></Box>}
                 </Box>
               </Box>
             </Box>
             </Box>
           )
         })}
-        {hidden > 0 && <Text dimColor>{`+${hidden} more agent(s)`}</Text>}
+        {hidden > 0 && <Text dimColor>{`+${hidden} more running agent(s)`}</Text>}
+        {doneAgents.length > 0 && (
+          <Box flexDirection="row" gap={1} alignItems="center">
+            <Button key="agents-toggle" label={`${view.agents ? '⊘ Hide' : '👁 Show'} completed (${doneAgents.length})`} dimColor onPress={() => toggleView($, 'agents')} />
+            {cfg.showCost && <Text color="#fbbf24">{money(doneAgentCost)}</Text>}
+          </Box>
+        )}
       </Box>
 
       <Box flexDirection="column" gap={1} {...card}>
         {hdr('BACKGROUND', `${runningTasks.length} running`, '#4ade80', 'terminal', runningTasks.length > 0)}
         {allTasks.length === 0 && <Text dimColor>No background jobs. Commands started with run_in_background show up here.</Text>}
-        {shownTasks.map(t => {
+        {[...liveTasks, ...(view.tasks ? doneTasks : [])].map(t => {
           const isRun = t.status === 'running'
           const barW = Math.max(80, innerW - 130)
           return (
@@ -714,6 +741,9 @@ async function draw($: any, e: any, cfg: Cfg, mode: 'band' | 'pane'): Promise<an
             </Box>
           )
         })}
+        {doneTasks.length > 0 && (
+          <Button key="tasks-toggle" label={`${view.tasks ? '⊘ Hide' : '👁 Show'} completed (${doneTasks.length})`} dimColor onPress={() => toggleView($, 'tasks')} />
+        )}
       </Box>
     </Box>
   )
@@ -766,8 +796,8 @@ export const register: Register = (on, options) => {
 
   on('turn.start', async ($, e, next) => {
     const now = await $.clock.now()
-    await update($, agentsA, all => Object.fromEntries(Object.entries(all).filter(([, a]) => a.status === 'running')))
-    await update($, tasksA, all => Object.fromEntries(Object.entries(all).filter(([, t]) => t.status === 'running')))
+    await update($, agentsA, all => keepRecent(all))
+    await update($, tasksA, all => keepRecent(all))
     const c0 = await sessionCost($)
     await update($, runA, r => ({ ...run0, active: true, startedAt: now, lastActivity: now, costAtStart: c0, lastTurnCost: r.lastTurnCost }))
 
