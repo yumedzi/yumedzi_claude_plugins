@@ -119,24 +119,22 @@ function keepRecent<T extends { status: string; endedAt: number }>(all: Record<s
 }
 
 // Flip a Completed section, then bump the tick so an idle pane (no 1 Hz redraw) repaints at once.
-// A click on a pane that does not hold the keyboard only hands it the keyboard: the engine raises
-// `ui.focus` for that click but no press. So the toggle also flips on that focus move, and a press
-// that does follow it within FOCUS_PRESS_MS is taken as the same click, not a second one.
-const FOCUS_PRESS_MS = 700
-const focusFlip: { key: string; at: number } = { key: '', at: 0 }
-async function toggleView($: any, key: 'agents' | 'tasks', viaFocus = false) {
+// A click on a button the focus ring is not on yet only moves the ring there (`ui.focus`, no
+// press), so the first click on a toggle seemed lost. The toggle flips on that focus move too; when
+// one click raises both (focus and press, in either order, within SAME_CLICK_MS), only the first counts.
+const SAME_CLICK_MS = 400
+const lastFlip: { key: string; at: number; via: 'press' | 'focus' } = { key: '', at: 0, via: 'press' }
+async function toggleView($: any, key: 'agents' | 'tasks', via: 'press' | 'focus' = 'press') {
   const at: number = await $.clock.now()
-  if (viaFocus) Object.assign(focusFlip, { key, at })
-  else if (focusFlip.key === key && at - focusFlip.at < FOCUS_PRESS_MS) return
+  const isSameClick = lastFlip.key === key && lastFlip.via !== via && at - lastFlip.at < SAME_CLICK_MS
+  Object.assign(lastFlip, { key, at, via })
+  if (isSameClick) return
   await update($, viewA, x => ({ ...x, [key]: !x[key] }))
   await update($, tickA, n => n + 1)
 }
 async function focusToggle($: any, e: any, next: any) {
   const key = e.element === 'agents-toggle' ? 'agents' : e.element === 'tasks-toggle' ? 'tasks' : null
-  if (key && e.origin?.kind === 'person') {
-    const pane = (await $.ui.panes()).find((p: any) => p.id === PANE)
-    if (pane && !pane.isFocused) await toggleView($, key, true)
-  }
+  if (key && e.origin?.kind === 'person') await toggleView($, key, 'focus')
 
   return next(e)
 }
