@@ -119,9 +119,26 @@ function keepRecent<T extends { status: string; endedAt: number }>(all: Record<s
 }
 
 // Flip a Completed section, then bump the tick so an idle pane (no 1 Hz redraw) repaints at once.
-async function toggleView($: any, key: 'agents' | 'tasks') {
+// A click on a pane that does not hold the keyboard only hands it the keyboard: the engine raises
+// `ui.focus` for that click but no press. So the toggle also flips on that focus move, and a press
+// that does follow it within FOCUS_PRESS_MS is taken as the same click, not a second one.
+const FOCUS_PRESS_MS = 700
+const focusFlip: { key: string; at: number } = { key: '', at: 0 }
+async function toggleView($: any, key: 'agents' | 'tasks', viaFocus = false) {
+  const at: number = await $.clock.now()
+  if (viaFocus) Object.assign(focusFlip, { key, at })
+  else if (focusFlip.key === key && at - focusFlip.at < FOCUS_PRESS_MS) return
   await update($, viewA, x => ({ ...x, [key]: !x[key] }))
   await update($, tickA, n => n + 1)
+}
+async function focusToggle($: any, e: any, next: any) {
+  const key = e.element === 'agents-toggle' ? 'agents' : e.element === 'tasks-toggle' ? 'tasks' : null
+  if (key && e.origin?.kind === 'person') {
+    const pane = (await $.ui.panes()).find((p: any) => p.id === PANE)
+    if (pane && !pane.isFocused) await toggleView($, key, true)
+  }
+
+  return next(e)
 }
 
 // ---------------------------------------------------------------- small helpers
@@ -947,4 +964,5 @@ export const register: Register = (on, options) => {
   })
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => (await draw($, e, cfg, 'pane')) ?? <></>)
+  on('ui.focus', { component: 'Pane', requestId: PANE }, focusToggle).catch(($, e, next) => next(e))
 }
