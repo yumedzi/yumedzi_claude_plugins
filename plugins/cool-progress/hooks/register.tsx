@@ -537,6 +537,9 @@ async function draw($: any, e: any, cfg: Cfg, mode: 'band' | 'pane'): Promise<an
   const isLive = isRunning || r.showDone || busy
   const table: any = $.ui.resolve(e)
   const { Box, Text, Button } = table
+  // `resolve` completes every table, so the terminal's has an `Svg` too, but one that draws an empty
+  // fragment: only the remote surfaces draw SVG, so the terminal takes the text fallbacks.
+  const hasSvg = Boolean(table.Svg) && e.surface !== 'terminal'
   const tick = await read($, tickA)
   const sprites = { ...BUILTIN, ...(await read($, spritesA)) }
   const cols: number = e.props.bodyColumns
@@ -551,7 +554,7 @@ async function draw($: any, e: any, cfg: Cfg, mode: 'band' | 'pane'): Promise<an
   const maxPx = mode === 'band' ? 1040 : 100000
   const px = (cells: number) => Math.round(Math.min(cells * pxCol, maxPx))
   const barEl = (width: number, from: number, to: number, hasCrab: boolean, live: boolean) =>
-    table.Svg ? (
+    hasSvg ? (
       <table.Svg
         source={dotBar(px(width), to, hasCrab, live)}
         alt={`progress ${Math.round(to * 100)}%`}
@@ -562,7 +565,7 @@ async function draw($: any, e: any, cfg: Cfg, mode: 'band' | 'pane'): Promise<an
       <Box flexDirection="row">{bar(Text, width, to, tick, live)}</Box>
     )
   const statusEl = (state: 'idle' | 'running' | 'done') =>
-    table.Svg ? (
+    hasSvg ? (
       <table.Svg source={statusIcon(state)} alt={state} width={22} height={22} />
     ) : (
       <Text color="#2dd4bf" bold>{state === 'done' ? '✓' : state === 'running' ? SPIN[tick % SPIN.length] : '◇'}</Text>
@@ -645,9 +648,9 @@ async function draw($: any, e: any, cfg: Cfg, mode: 'band' | 'pane'): Promise<an
   const card = { borderStyle: 'round', borderColor: 'inactive', paddingX: 1, paddingY: 1 }
   const innerW = Math.max(160, (cols - 2) * 8)
   const hdr = (name: string, note: string, color: string, iconName: string, live: boolean, noteShort?: string) =>
-    table.Svg ? <table.Svg source={headerSvg(innerW, name, note, color, iconName, live, noteShort)} alt={`${name}: ${note}`} width={innerW} height={30} /> : title(name, note, color)
+    hasSvg ? <table.Svg source={headerSvg(innerW, name, note, color, iconName, live, noteShort)} alt={`${name}: ${note}`} width={innerW} height={30} /> : title(name, note, color)
   const tile = (label: string, value: string, color: string | undefined, iconName: string, w: number) =>
-    table.Svg ? <table.Svg source={statTile(w, label, value, color, iconName)} alt={`${label}: ${value}`} width={w} height={48} /> : stat(label, value, color)
+    hasSvg ? <table.Svg source={statTile(w, label, value, color, iconName)} alt={`${label}: ${value}`} width={w} height={48} /> : <Box width={termTileW}>{stat(label, value, color)}</Box>
 
   const turnCost = isRunning ? (r.costAtStart > 0 && sessionCost !== null ? Math.max(0, sessionCost - r.costAtStart) : -1) : r.lastTurnCost
   const tiles: [string, string, string | undefined, string][] = [
@@ -658,6 +661,8 @@ async function draw($: any, e: any, cfg: Cfg, mode: 'band' | 'pane'): Promise<an
     ...limits.map((l): [string, string, string | undefined, string] => [l.kind === 'five_hour' ? '5H LIMIT' : l.kind === 'seven_day' ? '7D LIMIT' : l.kind.toUpperCase(), `${Math.round(l.percentUsed)}%`, pctColor(l.percentUsed), 'clock']),
   ]
   const isNarrow = innerW < 460
+  // The terminal's text tiles: two or three to a row, in cells (the card's border and padding take 4).
+  const termTileW = Math.max(14, Math.floor((cols - 4) / (cols >= 66 ? 3 : 2)) - 1)
   const perRow = isNarrow ? 2 : Math.min(tiles.length, 4)
   const tileW = isNarrow ? Math.max(90, Math.floor((innerW - 12) / 2) - 4) : Math.max(100, Math.floor((innerW - 130) / perRow) - 8)
 
@@ -666,7 +671,7 @@ async function draw($: any, e: any, cfg: Cfg, mode: 'band' | 'pane'): Promise<an
       <Box flexDirection="column" gap={1} {...card}>
         {hdr('SESSION', usage ? `${turns} turns · up ${clockLong(upMs)}` : 'stats unavailable', '#d97757', 'bars', isRunning || busy, usage ? `up ${clockLong(upMs)}` : undefined)}
         <Box flexDirection="row" gap={2} alignItems="center">
-          {table.Svg && ctxWindow > 0 && !isNarrow && (
+          {hasSvg && ctxWindow > 0 && !isNarrow && (
             <Box flexShrink={0}><table.Svg source={donutSvg(72, ctxPct, pctColor(ctxPct))} alt={`context ${ctxPct}%`} width={72} height={72} /></Box>
           )}
           <Box flexDirection="row" flexWrap="wrap" columnGap={1} rowGap={0} flexGrow={1}>
@@ -690,10 +695,10 @@ async function draw($: any, e: any, cfg: Cfg, mode: 'band' | 'pane'): Promise<an
           const cpct = Math.round((a.ctx / cmax) * 100)
           return (
             <Box flexDirection="column" gap={1}>
-              {idx > 0 && table.Svg && <table.Svg source={dividerSvg(innerW)} alt="" width={innerW} height={1} />}
+              {idx > 0 && hasSvg && <table.Svg source={dividerSvg(innerW)} alt="" width={innerW} height={1} />}
             <Box flexDirection="row" gap={1} alignItems="center">
-              <Box flexShrink={0} width={Math.ceil(spriteW / 8) + 1}>
-                {table.Svg ? (
+              <Box flexShrink={0} width={hasSvg ? Math.ceil(spriteW / 8) + 1 : sp.frames[0]![0]!.length + 1}>
+                {hasSvg ? (
                   <table.Svg source={spriteSvg(sp, u, isRun)} alt={`${a.sprite} mascot`} width={spriteW} height={spriteH} />
                 ) : (
                   <Box flexDirection="column">{spriteRows(Box, Text, sp, frame, !isRun)}</Box>
@@ -707,12 +712,12 @@ async function draw($: any, e: any, cfg: Cfg, mode: 'band' | 'pane'): Promise<an
                   <Box flexShrink={0}><Text color="#a78bfa">{a.model}</Text></Box>
                 </Box>
                 <Box flexDirection="row" gap={1} alignItems="center">
-                  <Box flexShrink={0}>{barEl(Math.max(10, cols - 28), p, p, false, isRun)}</Box>
+                  <Box flexShrink={0}>{barEl(Math.max(10, cols - (hasSvg ? 28 : 20 + sp.frames[0]![0]!.length)), p, p, false, isRun)}</Box>
                   <Box flexShrink={0}><Text bold={isRun}>{isRun ? `${Math.round(p * 100)}%` : 'done'}</Text></Box>
                 </Box>
                 <Box flexDirection="row" gap={1} alignItems="center">
                   <Box flexShrink={1} minWidth={0}><Text dimColor wrap="truncate-end">{isRun ? a.activity : a.type}</Text></Box>
-                  {isRun && table.Svg && <Box flexShrink={0}><table.Svg source={TYPING_SVG} alt="working" width={22} height={10} /></Box>}
+                  {isRun && hasSvg && <Box flexShrink={0}><table.Svg source={TYPING_SVG} alt="working" width={22} height={10} /></Box>}
                 </Box>
                 <Box flexDirection="row" flexWrap="wrap" columnGap={2} rowGap={0}>
                   <Box flexShrink={0}><Text dimColor>{`${a.tools} tools · ${clock((a.endedAt || now) - a.startedAt)}`}</Text></Box>
@@ -742,7 +747,7 @@ async function draw($: any, e: any, cfg: Cfg, mode: 'band' | 'pane'): Promise<an
           return (
             <Box flexDirection="row" gap={1} alignItems="center">
               <Box flexShrink={0} width={4}>
-                {table.Svg ? (
+                {hasSvg ? (
                   <table.Svg source={termIcon(t.status)} alt={`${t.status} job`} width={28} height={20} />
                 ) : (
                   <Text color="#4ade80">{t.status === 'running' ? '>_' : t.status === 'done' ? '✓' : '✗'}</Text>
@@ -750,7 +755,7 @@ async function draw($: any, e: any, cfg: Cfg, mode: 'band' | 'pane'): Promise<an
               </Box>
               <Box flexDirection="column" flexGrow={1} flexShrink={1} minWidth={0}>
                 <Text dimColor={!isRun} wrap="truncate-end">{t.label.replace(/\s+/g, ' ')}</Text>
-                {table.Svg && <table.Svg source={jobBar(barW, t.status)} alt="" width={barW} height={4} />}
+                {hasSvg && <table.Svg source={jobBar(barW, t.status)} alt="" width={barW} height={4} />}
               </Box>
               <Box flexShrink={0}><Text dimColor>{clock((t.endedAt || now) - t.startedAt)}</Text></Box>
             </Box>

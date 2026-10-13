@@ -12,7 +12,7 @@ A Claude Code Desktop mod with two separate pieces.
 
 Cost is an estimate from token counts and a built-in per-model price table (`PRICES` in `hooks/register.tsx`), not a bill. Per-agent progress is a step-count estimate: there is no real completion signal.
 
-Draws on the desktop surface (SVG); terminals get a text bar with a crab marker.
+Draws on the desktop surface (SVG). In the terminal CLI the band and the panel fall back to text: a block-character bar with a crab marker, coloured card titles, text stat tiles, character mascots and `>_` / `✓` job marks.
 
 ## Install
 
