@@ -5,7 +5,7 @@ import type { AgentRow, Run, Sprite, TaskRow } from '../types'
 
 const run0: Run = {
   active: false, showDone: false, startedAt: 0, steps: 0, tools: 0,
-  todoDone: 0, todoActive: 0, todoTotal: 0, target: 0, shown: 0, from: 0, activity: '', endedAt: 0, lastActivity: 0, costAtStart: 0, lastTurnCost: -1,
+  todoDone: 0, todoActive: 0, todoTotal: 0, target: 0, shown: 0, from: 0, activity: '', endedAt: 0, lastActivity: 0, costAtStart: -1, lastTurnCost: -1,
 }
 const runA = atom({ plugin: 'cool-progress', key: 'run' } as const, run0)
 const agentsA = atom({ plugin: 'cool-progress', key: 'agents' } as const, {} as Record<string, AgentRow>)
@@ -160,12 +160,15 @@ const clockLong = (ms: number) => {
 const money = (c: number | null) => (c === null ? '—' : '~$' + (c < 1 ? c.toFixed(3) : c.toFixed(2)))
 const modelName = (m: string) => m.replace(/^claude-/, '')
 
+// The row draws this with `truncate-end`, so it is cut where the pane runs out of room. Here it
+// is only folded to one line and capped, to keep the stored state small.
+const oneLine = (s: string) => short(s.replace(/\s+/g, ' ').trim(), 300)
 function describeCall(name: string, args: Record<string, unknown>): string {
   const p = args.file_path ?? args.notebook_path ?? args.path
   if (typeof p === 'string') return `${name} ${base(p)}`
-  if (typeof args.command === 'string') return `${name} ${short(args.command, 28)}`
-  if (typeof args.pattern === 'string') return `${name} ${short(args.pattern, 24)}`
-  if (typeof args.description === 'string') return `${name} ${short(args.description, 24)}`
+  if (typeof args.command === 'string') return `${name} ${oneLine(args.command)}`
+  if (typeof args.pattern === 'string') return `${name} ${oneLine(args.pattern)}`
+  if (typeof args.description === 'string') return `${name} ${oneLine(args.description)}`
 
   return name
 }
@@ -178,11 +181,14 @@ function target(r: Run, k: number): number {
   return Math.max(r.target, Math.min(0.95, t))
 }
 
+// The session's cost so far, or -1 when the engine reports none. A first turn starts at 0, a real
+// value, so 0 must not stand for "unknown".
 async function sessionCost($: any): Promise<number> {
   try {
-    return ((await $.session.usage()).cost?.usd as number | undefined) ?? 0
+    const usd = (await $.session.usage()).cost?.usd
+    return typeof usd === 'number' ? usd : -1
   } catch {
-    return 0
+    return -1
   }
 }
 
@@ -652,7 +658,7 @@ async function draw($: any, e: any, cfg: Cfg, mode: 'band' | 'pane'): Promise<an
   const tile = (label: string, value: string, color: string | undefined, iconName: string, w: number) =>
     hasSvg ? <table.Svg source={statTile(w, label, value, color, iconName)} alt={`${label}: ${value}`} width={w} height={48} /> : <Box width={termTileW}>{stat(label, value, color)}</Box>
 
-  const turnCost = isRunning ? (r.costAtStart > 0 && sessionCost !== null ? Math.max(0, sessionCost - r.costAtStart) : -1) : r.lastTurnCost
+  const turnCost = isRunning ? (r.costAtStart >= 0 && sessionCost !== null ? Math.max(0, sessionCost - r.costAtStart) : -1) : r.lastTurnCost
   const tiles: [string, string, string | undefined, string][] = [
     ['SESSION COST', sessionCost === null ? '—' : realMoney(sessionCost), '#fbbf24', 'coin'],
     [isRunning ? 'THIS TURN' : 'LAST TURN', turnCost < 0 ? '—' : realMoney(turnCost), turnCost < 0 ? undefined : '#fbbf24', 'clock'],
@@ -669,7 +675,7 @@ async function draw($: any, e: any, cfg: Cfg, mode: 'band' | 'pane'): Promise<an
   return (
     <Box flexDirection="column" gap={1}>
       <Box flexDirection="column" gap={1} {...card}>
-        {hdr('SESSION', usage ? `${turns} turns · up ${clockLong(upMs)}` : 'stats unavailable', '#d97757', 'bars', isRunning || busy, usage ? `up ${clockLong(upMs)}` : undefined)}
+        {hdr('SESSION', usage ? `${turns} turn${turns === 1 ? '' : 's'} · up ${clockLong(upMs)}` : 'stats unavailable', '#d97757', 'bars', isRunning || busy, usage ? `up ${clockLong(upMs)}` : undefined)}
         <Box flexDirection="row" gap={2} alignItems="center">
           {hasSvg && ctxWindow > 0 && !isNarrow && (
             <Box flexShrink={0}><table.Svg source={donutSvg(72, ctxPct, pctColor(ctxPct))} alt={`context ${ctxPct}%`} width={72} height={72} /></Box>
@@ -839,7 +845,7 @@ export const register: Register = (on, options) => {
         from: 1,
         shown: 1,
         endedAt: endedNow,
-        lastTurnCost: r.costAtStart > 0 && c1 > 0 ? Math.max(0, c1 - r.costAtStart) : r.lastTurnCost,
+        lastTurnCost: r.costAtStart >= 0 && c1 >= 0 ? Math.max(0, c1 - r.costAtStart) : r.lastTurnCost,
       }))
       $.clock.after(1200, () => {
         void update($, runA, r => (r.from === r.shown ? r : { ...r, from: r.shown }))
