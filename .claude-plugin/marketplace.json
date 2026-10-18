@@ -2,7 +2,7 @@
   "name": "yumedzi-claude-plugins",
   "metadata": {
     "description": "Personal Claude Code plugins",
-    "version": "1.13.0"
+    "version": "1.14.0"
   },
   "owner": {
     "name": "Viktor Moyseyenko",
@@ -105,7 +105,7 @@
     {
       "name": "cool-progress",
       "description": "A slim animated band above the prompt: live progress bar with a position marker, a compact sub-agent panel with pixel mascots, model and estimated cost, and background-task rows with an animated terminal sign.",
-      "version": "0.1.37",
+      "version": "0.1.39",
       "author": {
         "name": "Viktor Moyseyenko",
         "email": "vityok@gmail.com"

@@ -517,46 +517,57 @@ ${dash > 0 ? `<circle cx="${m}" cy="${m}" r="${r}" fill="none" stroke="${color}"
 type StripItem = { icon: string; label: string; value: string; color?: string }
 // `tail`, when given, is the last column, pinned right: the agents and background counts stacked.
 type StripTail = { agents: string; agentsLive: boolean; tasks: string; tasksLive: boolean }
+// The costs outrank the counts: when the tail would push session or turn cost out, it is dropped.
+const STRIP_MUST = 2
 function stripSvg(w: number, ctx: { pct: number; value: string; color: string } | null, items: StripItem[], tail?: StripTail): string {
   const H = 30
-  const parts: string[] = []
-  let x = 0
-  const tailW = tail ? 18 + Math.max(tail.agents.length, tail.tasks.length) * 6.6 : 0
-  if (tail) {
-    const tx = w - tailW
-    const line = (y: number, name: string, color: string, text: string, isLive: boolean) => {
-      parts.push(`<g opacity="${isLive ? 1 : 0.55}">${icon(name, color, tx, y, 0.72)}`)
-      parts.push(`<text x="${tx + 16}" y="${y + 10}" font-family="${FONT}" font-size="11" font-weight="${isLive ? 700 : 400}" fill="${color}">${xml(text)}</text></g>`)
+  const layout = (withTail: boolean) => {
+    const parts: string[] = []
+    let x = 0
+    let room = w
+    if (withTail && tail) {
+      const tailW = 18 + Math.max(tail.agents.length, tail.tasks.length) * 6.6
+      const tx = w - tailW
+      const line = (y: number, name: string, color: string, text: string, isLive: boolean) => {
+        parts.push(`<g opacity="${isLive ? 1 : 0.55}">${icon(name, color, tx, y, 0.72)}`)
+        parts.push(`<text x="${tx + 16}" y="${y + 10}" font-family="${FONT}" font-size="11" font-weight="${isLive ? 700 : 400}" fill="${color}">${xml(text)}</text></g>`)
+      }
+      line(0.5, 'robot', '#a78bfa', tail.agents, tail.agentsLive)
+      line(15.5, 'terminal', '#4ade80', tail.tasks, tail.tasksLive)
+      room -= tailW + 12
     }
-    line(0.5, 'robot', '#a78bfa', tail.agents, tail.agentsLive)
-    line(15.5, 'terminal', '#4ade80', tail.tasks, tail.tasksLive)
-    w -= tailW + 12
-  }
-  const cell = (it: StripItem, ringPct?: number) => {
-    const iw = ringPct === undefined ? 15 : 28
-    const tw = Math.max(it.label.length * 6.1, it.value.length * 7.9)
-    if (x + iw + 5 + tw > w) return false
-    if (ringPct === undefined) {
-      parts.push(icon(it.icon, it.color ?? '#8a8a8a', x, 7.5, 0.9))
-    } else {
-      const r = 11.5
-      const c = 2 * Math.PI * r
-      const dash = (Math.min(100, Math.max(0, ringPct)) / 100) * c
-      parts.push(`<circle cx="${x + 14}" cy="15" r="${r}" fill="none" stroke="#8a8a8a" stroke-opacity="0.25" stroke-width="3.5"/>`)
-      if (dash > 0) parts.push(`<circle cx="${x + 14}" cy="15" r="${r}" fill="none" stroke="${it.color}" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="${dash.toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 ${x + 14} 15)"/>`)
-      parts.push(icon(it.icon, it.color ?? '#8a8a8a', x + 8.6, 9.6, 0.68))
+    const cell = (it: StripItem, ringPct?: number) => {
+      const iw = ringPct === undefined ? 15 : 28
+      const tw = Math.max(it.label.length * 6.1, it.value.length * 7.9)
+      if (x + iw + 5 + tw > room) return false
+      if (ringPct === undefined) {
+        parts.push(icon(it.icon, it.color ?? '#8a8a8a', x, 7.5, 0.9))
+      } else {
+        const r = 11.5
+        const c = 2 * Math.PI * r
+        const dash = (Math.min(100, Math.max(0, ringPct)) / 100) * c
+        parts.push(`<circle cx="${x + 14}" cy="15" r="${r}" fill="none" stroke="#8a8a8a" stroke-opacity="0.25" stroke-width="3.5"/>`)
+        if (dash > 0) parts.push(`<circle cx="${x + 14}" cy="15" r="${r}" fill="none" stroke="${it.color}" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="${dash.toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 ${x + 14} 15)"/>`)
+        parts.push(icon(it.icon, it.color ?? '#8a8a8a', x + 8.6, 9.6, 0.68))
+      }
+      const tx = x + iw + 5
+      parts.push(`<text x="${tx}" y="11" class="n" font-family="${FONT}" font-size="9" letter-spacing="0.6">${xml(it.label)}</text>`)
+      parts.push(`<text x="${tx}" y="26" font-family="${FONT}" font-size="13" font-weight="700" ${it.color ? `fill="${it.color}"` : 'class="v"'}>${xml(it.value)}</text>`)
+      x = tx + tw + 16
+      return true
     }
-    const tx = x + iw + 5
-    parts.push(`<text x="${tx}" y="11" class="n" font-family="${FONT}" font-size="9" letter-spacing="0.6">${xml(it.label)}</text>`)
-    parts.push(`<text x="${tx}" y="26" font-family="${FONT}" font-size="13" font-weight="700" ${it.color ? `fill="${it.color}"` : 'class="v"'}>${xml(it.value)}</text>`)
-    x = tx + tw + 16
-    return true
+    if (ctx) cell({ icon: 'chip', label: 'CONTEXT', value: ctx.value, color: ctx.color }, ctx.pct)
+    let placed = 0
+    for (const it of items) {
+      if (!cell(it)) break
+      placed++
+    }
+    return { parts, placed }
   }
-  if (ctx) cell({ icon: 'chip', label: 'CONTEXT', value: ctx.value, color: ctx.color }, ctx.pct)
-  for (const it of items) if (!cell(it)) break
+  let { parts, placed } = layout(true)
+  if (tail && placed < Math.min(STRIP_MUST, items.length)) parts = layout(false).parts
 
-  const fullW = w + (tail ? tailW + 12 : 0)
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${fullW}" height="${H}" viewBox="0 0 ${fullW} ${H}"><style>${TXT_CSS}</style>${parts.join('')}</svg>`
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${H}" viewBox="0 0 ${w} ${H}"><style>${TXT_CSS}</style>${parts.join('')}</svg>`
 }
 
 
@@ -727,8 +738,8 @@ async function draw($: any, e: any, cfg: Cfg, mode: 'band' | 'pane'): Promise<an
   const SLIM = 40
   const hasRing = hasSvg && ctxWindow > 0
   const tiles: [string, string, string | undefined, string][] = [
-    ['SESSION COST', sessionCost === null ? '—' : realMoney(sessionCost), '#fbbf24', 'coin'],
-    [isRunning ? 'THIS TURN' : 'LAST TURN', turnCost < 0 ? '—' : realMoney(turnCost), turnCost < 0 ? undefined : '#fbbf24', 'clock'],
+    ['SESSION', sessionCost === null ? '—' : realMoney(sessionCost), '#fbbf24', 'coin'],
+    ['TURN', turnCost < 0 ? '—' : realMoney(turnCost), turnCost < 0 ? undefined : '#fbbf24', 'clock'],
     ['AGENTS', allAgents.length === 0 ? '—' : money(agentCost), allAgents.length === 0 ? undefined : '#fbbf24', 'robot'],
     ...(hasRing ? [] : [['CONTEXT', ctxWindow > 0 ? (innerW < 460 ? `${ctxPct}% · ${tfmt(ctxTokens)}` : `${tfmt(ctxTokens)} / ${tfmt(ctxWindow)}`) : '—', ctxWindow > 0 ? ctxColor(ctxTokens, ctxPct) : undefined, 'chip'] as [string, string, string | undefined, string]]),
     ...limits.map((l): [string, string, string | undefined, string] => [l.kind === 'five_hour' ? '5H LIMIT' : l.kind === 'seven_day' ? '7D LIMIT' : l.kind.toUpperCase(), `${Math.round(l.percentUsed)}%`, pctColor(l.percentUsed), 'clock']),
@@ -773,7 +784,7 @@ async function draw($: any, e: any, cfg: Cfg, mode: 'band' | 'pane'): Promise<an
   if (tier !== 'full') {
     const strip: StripItem[] = [
       { icon: 'coin', label: 'SESSION', value: sessionCost === null ? '—' : realMoney(sessionCost), color: '#fbbf24' },
-      { icon: 'clock', label: isRunning ? 'THIS TURN' : 'LAST TURN', value: turnCost < 0 ? '—' : realMoney(turnCost), color: turnCost < 0 ? undefined : '#fbbf24' },
+      { icon: 'clock', label: 'TURN', value: turnCost < 0 ? '—' : realMoney(turnCost), color: turnCost < 0 ? undefined : '#fbbf24' },
       ...limits.map((l): StripItem => ({ icon: 'clock', label: l.kind === 'five_hour' ? '5H' : l.kind === 'seven_day' ? '7D' : l.kind.toUpperCase(), value: `${Math.round(l.percentUsed)}%`, color: pctColor(l.percentUsed) })),
       { icon: 'bars', label: usage ? `${turns} TURN${turns === 1 ? '' : 'S'}` : 'TURNS', value: usage ? clockLong(upMs) : '—', color: '#d97757' },
       ...(allAgents.length > 0 ? [{ icon: 'robot', label: 'AGENTS', value: money(agentCost), color: '#a78bfa' }] : []),
