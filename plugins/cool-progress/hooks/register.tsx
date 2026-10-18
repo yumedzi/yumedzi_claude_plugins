@@ -470,13 +470,16 @@ ${icon(iconName, color, 13, 6.5, 1.1)}
 <circle class="${isLive ? 'pulse' : ''}" cx="${w - 14}" cy="15" r="3.4" fill="${isLive ? color : '#8a8a8a'}" ${isLive ? '' : 'fill-opacity="0.45"'}/></svg>`
 }
 
-function statTile(w: number, label: string, value: string, color?: string, iconName?: string): string {
+// `h` 48 is the full tile; 40 the slimmer one stacked three high beside the context ring.
+function statTile(w: number, label: string, value: string, color?: string, iconName?: string, tileH = 48): string {
   const lx = iconName ? 17 : 0
+  const h = tileH
+  const isSlim = h < 48
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="48" viewBox="0 0 ${w} 48"><style>${TXT_CSS}</style>
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><style>${TXT_CSS}</style>
 ${iconName ? icon(iconName, color ?? '#8a8a8a', 0, 2, 0.8) : ''}
 <text x="${lx}" y="12.5" class="n" font-family="${FONT}" font-size="10.5" letter-spacing="0.6">${xml(label)}</text>
-<text x="0" y="38" font-family="${FONT}" font-size="22" font-weight="700" ${color ? `fill="${color}"` : 'class="v"'}>${xml(value)}</text></svg>`
+<text x="0" y="${isSlim ? 33 : 38}" font-family="${FONT}" font-size="${isSlim ? 19 : 22}" font-weight="700" ${color ? `fill="${color}"` : 'class="v"'}>${xml(value)}</text></svg>`
 }
 
 // A thin sliver under a running job: a light segment sweeps along the track.
@@ -495,16 +498,65 @@ const TYPING_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="1
 
 const dividerSvg = (w: number) => `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="1" viewBox="0 0 ${w} 1"><rect width="${w}" height="1" fill="#8a8a8a" fill-opacity="0.22"/></svg>`
 
-function donutSvg(size: number, pct: number, color: string): string {
+function donutSvg(size: number, pct: number, color: string, sub: string): string {
   const r = size / 2 - 6
   const c = 2 * Math.PI * r
   const dash = (Math.min(100, Math.max(0, pct)) / 100) * c
+  const m = size / 2
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><style>${TXT_CSS}</style>
-<circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="#8a8a8a" stroke-opacity="0.25" stroke-width="6"/>
-<circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="${color}" stroke-width="6" stroke-linecap="round" stroke-dasharray="${dash.toFixed(1)} ${(c - dash).toFixed(1)}" transform="rotate(-90 ${size / 2} ${size / 2})"/>
-<text x="${size / 2}" y="${size / 2 + 2}" text-anchor="middle" class="v" font-family="${FONT}" font-size="15" font-weight="700">${Math.round(pct)}%</text>
-<text x="${size / 2}" y="${size / 2 + 14}" text-anchor="middle" class="n" font-family="${FONT}" font-size="9" letter-spacing="0.6">CONTEXT</text></svg>`
+<circle cx="${m}" cy="${m}" r="${r}" fill="${color}" fill-opacity="0.07" stroke="#8a8a8a" stroke-opacity="0.22" stroke-width="7"/>
+${dash > 0 ? `<circle cx="${m}" cy="${m}" r="${r}" fill="none" stroke="${color}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${dash.toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 ${m} ${m})"/>` : ''}
+<text x="${m}" y="${m - 13}" text-anchor="middle" class="n" font-family="${FONT}" font-size="8.5" letter-spacing="0.8">CONTEXT</text>
+<text x="${m}" y="${m + 7}" text-anchor="middle" font-family="${FONT}" font-size="21" font-weight="700" fill="${color}">${Math.round(pct)}%</text>
+<text x="${m}" y="${m + 21}" text-anchor="middle" class="n" font-family="${FONT}" font-size="9.5">${xml(sub)}</text></svg>`
+}
+
+// The compact SESSION strip, one row high: the context ring first, then the other stats as icon,
+// label and value, in priority order, each dropped whole when the width runs out.
+type StripItem = { icon: string; label: string; value: string; color?: string }
+// `tail`, when given, is the last column, pinned right: the agents and background counts stacked.
+type StripTail = { agents: string; agentsLive: boolean; tasks: string; tasksLive: boolean }
+function stripSvg(w: number, ctx: { pct: number; value: string; color: string } | null, items: StripItem[], tail?: StripTail): string {
+  const H = 30
+  const parts: string[] = []
+  let x = 0
+  const tailW = tail ? 18 + Math.max(tail.agents.length, tail.tasks.length) * 6.6 : 0
+  if (tail) {
+    const tx = w - tailW
+    const line = (y: number, name: string, color: string, text: string, isLive: boolean) => {
+      parts.push(`<g opacity="${isLive ? 1 : 0.55}">${icon(name, color, tx, y, 0.72)}`)
+      parts.push(`<text x="${tx + 16}" y="${y + 10}" font-family="${FONT}" font-size="11" font-weight="${isLive ? 700 : 400}" fill="${color}">${xml(text)}</text></g>`)
+    }
+    line(0.5, 'robot', '#a78bfa', tail.agents, tail.agentsLive)
+    line(15.5, 'terminal', '#4ade80', tail.tasks, tail.tasksLive)
+    w -= tailW + 12
+  }
+  const cell = (it: StripItem, ringPct?: number) => {
+    const iw = ringPct === undefined ? 15 : 28
+    const tw = Math.max(it.label.length * 6.1, it.value.length * 7.9)
+    if (x + iw + 5 + tw > w) return false
+    if (ringPct === undefined) {
+      parts.push(icon(it.icon, it.color ?? '#8a8a8a', x, 7.5, 0.9))
+    } else {
+      const r = 11.5
+      const c = 2 * Math.PI * r
+      const dash = (Math.min(100, Math.max(0, ringPct)) / 100) * c
+      parts.push(`<circle cx="${x + 14}" cy="15" r="${r}" fill="none" stroke="#8a8a8a" stroke-opacity="0.25" stroke-width="3.5"/>`)
+      if (dash > 0) parts.push(`<circle cx="${x + 14}" cy="15" r="${r}" fill="none" stroke="${it.color}" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="${dash.toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 ${x + 14} 15)"/>`)
+      parts.push(icon(it.icon, it.color ?? '#8a8a8a', x + 8.6, 9.6, 0.68))
+    }
+    const tx = x + iw + 5
+    parts.push(`<text x="${tx}" y="11" class="n" font-family="${FONT}" font-size="9" letter-spacing="0.6">${xml(it.label)}</text>`)
+    parts.push(`<text x="${tx}" y="26" font-family="${FONT}" font-size="13" font-weight="700" ${it.color ? `fill="${it.color}"` : 'class="v"'}>${xml(it.value)}</text>`)
+    x = tx + tw + 16
+    return true
+  }
+  if (ctx) cell({ icon: 'chip', label: 'CONTEXT', value: ctx.value, color: ctx.color }, ctx.pct)
+  for (const it of items) if (!cell(it)) break
+
+  const fullW = w + (tail ? tailW + 12 : 0)
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${fullW}" height="${H}" viewBox="0 0 ${fullW} ${H}"><style>${TXT_CSS}</style>${parts.join('')}</svg>`
 }
 
 
@@ -638,6 +690,14 @@ async function draw($: any, e: any, cfg: Cfg, mode: 'band' | 'pane'): Promise<an
   const upMs: number = usage ? now - usage.startedAt : 0
   const limits = (usage?.rateLimits ?? []) as { kind: string; percentUsed: number }[]
   const pctColor = (v: number) => (v >= 80 ? '#f87171' : v >= 60 ? '#fbbf24' : '#4ade80')
+  // Context by its size: green under 250k tokens, yellow to 350k, red past it. A small window (an
+  // agent on 200k) never gets that far, so it also turns by its share, whichever is worse.
+  const ctxColor = (tokens: number, pct: number) => {
+    const rank = (c: string) => ['#4ade80', '#fbbf24', '#f87171'].indexOf(c)
+    const bySize = tokens >= 350000 ? '#f87171' : tokens >= 250000 ? '#fbbf24' : '#4ade80'
+    const byShare = pctColor(pct)
+    return rank(bySize) >= rank(byShare) ? bySize : byShare
+  }
 
   const title = (text: string, note: string, color: string) => (
     <Box flexDirection="row" gap={1} alignItems="center">
@@ -655,40 +715,164 @@ async function draw($: any, e: any, cfg: Cfg, mode: 'band' | 'pane'): Promise<an
   const innerW = Math.max(160, (cols - 2) * 8)
   const hdr = (name: string, note: string, color: string, iconName: string, live: boolean, noteShort?: string) =>
     hasSvg ? <table.Svg source={headerSvg(innerW, name, note, color, iconName, live, noteShort)} alt={`${name}: ${note}`} width={innerW} height={30} /> : title(name, note, color)
-  const tile = (label: string, value: string, color: string | undefined, iconName: string, w: number) =>
-    hasSvg ? <table.Svg source={statTile(w, label, value, color, iconName)} alt={`${label}: ${value}`} width={w} height={48} /> : <Box width={termTileW}>{stat(label, value, color)}</Box>
+  const tile = (label: string, value: string, color: string | undefined, iconName: string, w: number, tileH = 48) =>
+    hasSvg ? <table.Svg source={statTile(w, label, value, color, iconName, tileH)} alt={`${label}: ${value}`} width={w} height={tileH} /> : <Box width={termTileW}>{stat(label, value, color)}</Box>
 
   const turnCost = isRunning ? (r.costAtStart >= 0 && sessionCost !== null ? Math.max(0, sessionCost - r.costAtStart) : -1) : r.lastTurnCost
+  // On the desktop the context ring leads the card, so CONTEXT drops out of the tiles. Narrow, the
+  // three costs (session, turn, agents) stack beside the ring in slim tiles, 3 x 40px = the ring's
+  // 120px, and the limits go below; wide, every tile stands in one row beside it.
+  const RING = innerW < 460 ? 120 : 96
+  const SIDE = 3
+  const SLIM = 40
+  const hasRing = hasSvg && ctxWindow > 0
   const tiles: [string, string, string | undefined, string][] = [
     ['SESSION COST', sessionCost === null ? '—' : realMoney(sessionCost), '#fbbf24', 'coin'],
     [isRunning ? 'THIS TURN' : 'LAST TURN', turnCost < 0 ? '—' : realMoney(turnCost), turnCost < 0 ? undefined : '#fbbf24', 'clock'],
     ['AGENTS', allAgents.length === 0 ? '—' : money(agentCost), allAgents.length === 0 ? undefined : '#fbbf24', 'robot'],
-    ['CONTEXT', ctxWindow > 0 ? (innerW < 460 ? `${ctxPct}% · ${tfmt(ctxTokens)}` : `${tfmt(ctxTokens)} / ${tfmt(ctxWindow)}`) : '—', ctxWindow > 0 ? pctColor(ctxPct) : undefined, 'chip'],
+    ...(hasRing ? [] : [['CONTEXT', ctxWindow > 0 ? (innerW < 460 ? `${ctxPct}% · ${tfmt(ctxTokens)}` : `${tfmt(ctxTokens)} / ${tfmt(ctxWindow)}`) : '—', ctxWindow > 0 ? ctxColor(ctxTokens, ctxPct) : undefined, 'chip'] as [string, string, string | undefined, string]]),
     ...limits.map((l): [string, string, string | undefined, string] => [l.kind === 'five_hour' ? '5H LIMIT' : l.kind === 'seven_day' ? '7D LIMIT' : l.kind.toUpperCase(), `${Math.round(l.percentUsed)}%`, pctColor(l.percentUsed), 'clock']),
   ]
   const isNarrow = innerW < 460
   // The terminal's text tiles: two or three to a row, in cells (the card's border and padding take 4).
   const termTileW = Math.max(14, Math.floor((cols - 4) / (cols >= 66 ? 3 : 2)) - 1)
   const perRow = isNarrow ? 2 : Math.min(tiles.length, 4)
-  const tileW = isNarrow ? Math.max(90, Math.floor((innerW - 12) / 2) - 4) : Math.max(100, Math.floor((innerW - 130) / perRow) - 8)
+  const tileW = isNarrow ? Math.max(90, Math.floor((innerW - 12) / 2) - 4) : Math.max(100, Math.floor((innerW - (hasRing ? RING + 30 : 0)) / perRow) - 8)
+  const sideW = Math.max(90, innerW - RING - 24)
+  const belowRows = Math.ceil(Math.max(0, tiles.length - SIDE) / 2)
+
+  // Three views, the largest that fits the pane's height without scrolling:
+  //   full    the cards as they are;
+  //   middle  SESSION folds into one strip led by the context ring, then one summary row for the
+  //           agents and background jobs and one row per item, as many as fit, then "+N more";
+  //   ultra   that strip alone, its last column the agents and background counts stacked.
+  // Heights are estimated in the pane's rows. On the desktop a row is about 19.5 CSS px (the pane's
+  // text line), and the SVG parts are sized in px, so `u(px, rows)` gives each part's height in rows
+  // on either surface. Measured on the desktop: a card's border, padding, header and gap take about
+  // 59px, the gap between cards 10px, an agent row with its mascot about 88px, a job row 34px.
+  const bodyRows: number = e.props.scroll?.bodyRows ?? 0
+  const ROW_PX = 19.5
+  const u = (pxH: number, rowsH: number) => (hasSvg ? pxH / ROW_PX : rowsH)
+  const termPerRow = cols >= 66 ? 3 : 2
+  const tileRows = Math.ceil(tiles.length / (hasSvg ? perRow : termPerRow))
+  const agentItems = shownAgents.length + (view.agents ? doneAgents.length : 0)
+  const taskItems = liveTasks.length + (view.tasks ? doneTasks.length : 0)
+  const fullNeed =
+    u(60 + (hasRing ? (isNarrow ? RING + 8 + belowRows * 48 : Math.max(RING, tileRows * 48)) : tileRows * 48), 6 + tileRows * 2) +
+    u(59 + (allAgents.length === 0 ? 39 : agentItems * 88) + (doneAgents.length > 0 ? 30 : 0) + (hidden > 0 ? 20 : 0), 6 + (allAgents.length === 0 ? 2 : agentItems * 5) + (doneAgents.length > 0 ? 2 : 0) + (hidden > 0 ? 1 : 0)) +
+    u(59 + (allTasks.length === 0 ? 39 : taskItems * 34) + (doneTasks.length > 0 ? 30 : 0), 6 + (allTasks.length === 0 ? 2 : taskItems * 2) + (doneTasks.length > 0 ? 2 : 0)) +
+    u(20, 2)
+  const stripH = u(30, 1)
+  const gapH = u(10, 1)
+  const lineH = u(ROW_PX, 1)
+  // The summary row may wrap to two lines on a thin pane.
+  const summaryH = lineH * (cols < 52 ? 2 : 1)
+  const middleMin = stripH + gapH + summaryH + lineH
+  const tier: 'full' | 'middle' | 'ultra' = bodyRows <= 0 || bodyRows >= fullNeed ? 'full' : bodyRows >= middleMin ? 'middle' : 'ultra'
+
+  if (tier !== 'full') {
+    const strip: StripItem[] = [
+      { icon: 'coin', label: 'SESSION', value: sessionCost === null ? '—' : realMoney(sessionCost), color: '#fbbf24' },
+      { icon: 'clock', label: isRunning ? 'THIS TURN' : 'LAST TURN', value: turnCost < 0 ? '—' : realMoney(turnCost), color: turnCost < 0 ? undefined : '#fbbf24' },
+      ...limits.map((l): StripItem => ({ icon: 'clock', label: l.kind === 'five_hour' ? '5H' : l.kind === 'seven_day' ? '7D' : l.kind.toUpperCase(), value: `${Math.round(l.percentUsed)}%`, color: pctColor(l.percentUsed) })),
+      { icon: 'bars', label: usage ? `${turns} TURN${turns === 1 ? '' : 'S'}` : 'TURNS', value: usage ? clockLong(upMs) : '—', color: '#d97757' },
+      ...(allAgents.length > 0 ? [{ icon: 'robot', label: 'AGENTS', value: money(agentCost), color: '#a78bfa' }] : []),
+    ]
+    const ctxVal = `${ctxPct}% · ${tfmt(ctxTokens)}`
+    const isUltra = tier === 'ultra'
+    const tail: StripTail | undefined = isUltra
+      ? { agents: `${runningAgents.length} · ${doneAgents.length} done`, agentsLive: runningAgents.length > 0, tasks: `${runningTasks.length} · ${doneTasks.length} done`, tasksLive: runningTasks.length > 0 }
+      : undefined
+    const sessionRow = hasSvg ? (
+      <table.Svg source={stripSvg(innerW, ctxWindow > 0 ? { pct: ctxPct, value: ctxVal, color: ctxColor(ctxTokens, ctxPct) } : null, strip, tail)} alt={`context ${ctxVal}`} width={innerW} height={30} />
+    ) : (
+      <Text wrap="truncate-end">
+        {ctxWindow > 0 && <Text color={ctxColor(ctxTokens, ctxPct)} bold>{`${['○', '◔', '◑', '◕', '●'][Math.round(Math.min(100, ctxPct) / 25)]} ${ctxVal}`}</Text>}
+        {isUltra && <Text color="#a78bfa">{`  🤖 ${runningAgents.length}`}</Text>}
+        {isUltra && <Text color="#4ade80">{`  >_ ${runningTasks.length}`}</Text>}
+        {strip.map(s => <Text color={s.color}>{`  ${s.value}`}<Text dimColor>{` ${s.label.toLowerCase()}`}</Text></Text>)}
+      </Text>
+    )
+    if (isUltra) return sessionRow
+
+    const agentRow = (a: AgentRow) => {
+      const isRun = a.status === 'running'
+      const p = Math.round(Math.min(0.95, 1 - Math.exp(-a.steps / cfg.ka)) * 100)
+      return (
+        <Box flexDirection="row" gap={1}>
+          <Box flexShrink={0}><Text color={a.status === 'failed' ? '#f87171' : '#a78bfa'}>{isRun ? SPIN[tick % SPIN.length] : a.status === 'failed' ? '✗' : '✓'}</Text></Box>
+          <Box flexShrink={1} minWidth={0}><Text bold={isRun} dimColor={!isRun} wrap="truncate-end">{a.label}</Text></Box>
+          <Box flexShrink={0}><Text dimColor={!isRun}>{isRun ? `${p}%` : clock(a.endedAt - a.startedAt)}</Text></Box>
+          {isRun && <Box flexShrink={1} flexGrow={1} minWidth={0}><Text dimColor wrap="truncate-end">{a.activity}</Text></Box>}
+        </Box>
+      )
+    }
+    const taskRow = (t: TaskRow) => (
+      <Box flexDirection="row" gap={1}>
+        <Box flexShrink={0}><Text color={t.status === 'failed' ? '#f87171' : '#4ade80'}>{t.status === 'running' ? '>_' : t.status === 'done' ? '✓' : '✗'}</Text></Box>
+        <Box flexShrink={1} flexGrow={1} minWidth={0}><Text dimColor={t.status !== 'running'} wrap="truncate-end">{t.label.replace(/\s+/g, ' ')}</Text></Box>
+        <Box flexShrink={0}><Text dimColor>{clock((t.endedAt || now) - t.startedAt)}</Text></Box>
+      </Box>
+    )
+    const summary = (
+      <Box flexDirection="row" flexWrap="wrap" columnGap={3} rowGap={0}>
+        <Box flexShrink={0} flexDirection="row" gap={1}>
+          <Text bold color="#a78bfa">🤖 AGENTS</Text>
+          <Text dimColor>{`${runningAgents.length} running · ${doneAgents.length} done`}</Text>
+        </Box>
+        <Box flexShrink={0} flexDirection="row" gap={1}>
+          <Text bold color="#4ade80">{'>_ BACKGROUND'}</Text>
+          <Text dimColor>{`${runningTasks.length} running · ${doneTasks.length} done`}</Text>
+        </Box>
+      </Box>
+    )
+    // Running agents and jobs first, then the recently finished, as many rows as are left.
+    const rows = [...liveAgents.map(agentRow), ...liveTasks.map(taskRow), ...doneAgents.map(agentRow), ...doneTasks.map(taskRow)]
+    const room = Math.max(1, Math.floor((bodyRows - stripH - gapH - summaryH) / lineH))
+    const fits = rows.length <= room ? rows : rows.slice(0, room - 1)
+    return (
+      <Box flexDirection="column" gap={1}>
+        {sessionRow}
+        <Box flexDirection="column">
+          {summary}
+          {fits}
+          {fits.length < rows.length && <Text dimColor>{`+${rows.length - fits.length} more`}</Text>}
+        </Box>
+      </Box>
+    )
+  }
 
   return (
     <Box flexDirection="column" gap={1}>
       <Box flexDirection="column" gap={1} {...card}>
         {hdr('SESSION', usage ? `${turns} turn${turns === 1 ? '' : 's'} · up ${clockLong(upMs)}` : 'stats unavailable', '#d97757', 'bars', isRunning || busy, usage ? `up ${clockLong(upMs)}` : undefined)}
-        <Box flexDirection="row" gap={2} alignItems="center">
-          {hasSvg && ctxWindow > 0 && !isNarrow && (
-            <Box flexShrink={0}><table.Svg source={donutSvg(72, ctxPct, pctColor(ctxPct))} alt={`context ${ctxPct}%`} width={72} height={72} /></Box>
-          )}
-          <Box flexDirection="row" flexWrap="wrap" columnGap={1} rowGap={0} flexGrow={1}>
-            {tiles.map(x => tile(x[0], x[1], x[2], x[3], tileW))}
+        {hasRing && isNarrow ? (
+          <Box flexDirection="column" gap={1}>
+            <Box flexDirection="row" gap={2} alignItems="center">
+              <Box flexShrink={0}><table.Svg source={donutSvg(RING, ctxPct, ctxColor(ctxTokens, ctxPct), `${tfmt(ctxTokens)} / ${tfmt(ctxWindow)}`)} alt={`context ${ctxPct}%`} width={RING} height={RING} /></Box>
+              <Box flexDirection="column">{tiles.slice(0, SIDE).map(x => tile(x[0], x[1], x[2], x[3], sideW, SLIM))}</Box>
+            </Box>
+            {tiles.length > SIDE && (
+              <Box flexDirection="row" flexWrap="wrap" columnGap={1} rowGap={0}>
+                {tiles.slice(SIDE).map(x => tile(x[0], x[1], x[2], x[3], tileW))}
+              </Box>
+            )}
           </Box>
-        </Box>
+        ) : (
+          <Box flexDirection="row" gap={2} alignItems="center">
+            {hasRing && (
+              <Box flexShrink={0}><table.Svg source={donutSvg(RING, ctxPct, ctxColor(ctxTokens, ctxPct), `${tfmt(ctxTokens)} / ${tfmt(ctxWindow)}`)} alt={`context ${ctxPct}%`} width={RING} height={RING} /></Box>
+            )}
+            <Box flexDirection="row" flexWrap="wrap" columnGap={1} rowGap={0} flexGrow={1}>
+              {tiles.map(x => tile(x[0], x[1], x[2], x[3], tileW))}
+            </Box>
+          </Box>
+        )}
       </Box>
 
       <Box flexDirection="column" gap={1} {...card}>
         {hdr('AGENTS', `${runningAgents.length} running · ${doneAgents.length} done${cfg.showCost && allAgents.length > 0 ? ' · ' + money(agentCost) : ''}`, '#a78bfa', 'robot', runningAgents.length > 0, `${runningAgents.length} running`)}
-        {allAgents.length === 0 && <Text dimColor>No sub-agents yet. They show up here as Claude spawns them.</Text>}
+        {allAgents.length === 0 && <Text color="#8a8a8a" italic>No sub-agents yet. They show up here as Claude spawns them.</Text>}
         {[...shownAgents, ...(view.agents ? doneAgents : [])].map((a, idx) => {
           const isRun = a.status === 'running'
           const sp = sprites[a.sprite] ?? BUILTIN.crab!
@@ -727,7 +911,7 @@ async function draw($: any, e: any, cfg: Cfg, mode: 'band' | 'pane'): Promise<an
                 </Box>
                 <Box flexDirection="row" flexWrap="wrap" columnGap={2} rowGap={0}>
                   <Box flexShrink={0}><Text dimColor>{`${a.tools} tools · ${clock((a.endedAt || now) - a.startedAt)}`}</Text></Box>
-                  <Box flexShrink={0}><Text color={a.ctx > 0 ? pctColor(cpct) : undefined} dimColor={a.ctx === 0}>{`ctx ${tfmt(a.ctx)} / ${tfmt(cmax)} · ${cpct}%`}</Text></Box>
+                  <Box flexShrink={0}><Text color={a.ctx > 0 ? ctxColor(a.ctx, cpct) : undefined} dimColor={a.ctx === 0}>{`ctx ${tfmt(a.ctx)} / ${tfmt(cmax)} · ${cpct}%`}</Text></Box>
                   {cfg.showCost && <Box flexShrink={0}><Text color="#fbbf24">{`${tfmt(a.input + a.output + a.cacheRead + a.cacheWrite)} tok · ${money(costOf(a))}`}</Text></Box>}
                 </Box>
               </Box>
@@ -746,7 +930,7 @@ async function draw($: any, e: any, cfg: Cfg, mode: 'band' | 'pane'): Promise<an
 
       <Box flexDirection="column" gap={1} {...card}>
         {hdr('BACKGROUND', `${runningTasks.length} running`, '#4ade80', 'terminal', runningTasks.length > 0)}
-        {allTasks.length === 0 && <Text dimColor>No background jobs. Commands started with run_in_background show up here.</Text>}
+        {allTasks.length === 0 && <Text color="#8a8a8a" italic>No background jobs. Commands started with run_in_background show up here.</Text>}
         {[...liveTasks, ...(view.tasks ? doneTasks : [])].map(t => {
           const isRun = t.status === 'running'
           const barW = Math.max(80, innerW - 130)
