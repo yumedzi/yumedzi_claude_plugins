@@ -517,9 +517,9 @@ ${dash > 0 ? `<circle cx="${m}" cy="${m}" r="${r}" fill="none" stroke="${color}"
 type StripItem = { icon: string; label: string; value: string; color?: string }
 // `tail`, when given, is the last column, pinned right: the agents and background counts stacked.
 type StripTail = { agents: string; agentsLive: boolean; tasks: string; tasksLive: boolean }
-// The costs outrank the counts: when the tail would push session or turn cost out, it is dropped.
-const STRIP_MUST = 2
-function stripSvg(w: number, ctx: { pct: number; value: string; color: string } | null, items: StripItem[], tail?: StripTail): string {
+// The first `must` items outrank the tail: when it would push any of them out, it is dropped. The
+// caller puts the costs and, on a subscription, the 5H and 7D limits first.
+function stripSvg(w: number, ctx: { pct: number; value: string; color: string } | null, items: StripItem[], tail?: StripTail, must = 2): string {
   const H = 30
   const layout = (withTail: boolean) => {
     const parts: string[] = []
@@ -565,7 +565,7 @@ function stripSvg(w: number, ctx: { pct: number; value: string; color: string } 
     return { parts, placed }
   }
   let { parts, placed } = layout(true)
-  if (tail && placed < Math.min(STRIP_MUST, items.length)) parts = layout(false).parts
+  if (tail && placed < Math.min(must, items.length)) parts = layout(false).parts
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${H}" viewBox="0 0 ${w} ${H}"><style>${TXT_CSS}</style>${parts.join('')}</svg>`
 }
@@ -795,7 +795,7 @@ async function draw($: any, e: any, cfg: Cfg, mode: 'band' | 'pane'): Promise<an
       ? { agents: `${runningAgents.length} · ${doneAgents.length} done`, agentsLive: runningAgents.length > 0, tasks: `${runningTasks.length} · ${doneTasks.length} done`, tasksLive: runningTasks.length > 0 }
       : undefined
     const sessionRow = hasSvg ? (
-      <table.Svg source={stripSvg(innerW, ctxWindow > 0 ? { pct: ctxPct, value: ctxVal, color: ctxColor(ctxTokens, ctxPct) } : null, strip, tail)} alt={`context ${ctxVal}`} width={innerW} height={30} />
+      <table.Svg source={stripSvg(innerW, ctxWindow > 0 ? { pct: ctxPct, value: ctxVal, color: ctxColor(ctxTokens, ctxPct) } : null, strip, tail, 2 + limits.length)} alt={`context ${ctxVal}`} width={innerW} height={30} />
     ) : (
       <Text wrap="truncate-end">
         {ctxWindow > 0 && <Text color={ctxColor(ctxTokens, ctxPct)} bold>{`${['○', '◔', '◑', '◕', '●'][Math.round(Math.min(100, ctxPct) / 25)]} ${ctxVal}`}</Text>}

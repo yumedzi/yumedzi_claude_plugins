@@ -1,6 +1,6 @@
 {
   "name": "cool-progress",
-  "version": "0.1.39",
+  "version": "0.1.40",
   "description": "A slim animated band above the prompt: live progress bar with a position marker, a compact sub-agent panel with pixel mascots, model and estimated cost, and background-task rows with an animated terminal sign.",
   "author": { "name": "Viktor Moyseyenko", "email": "vityok@gmail.com" },
   "license": "MIT",

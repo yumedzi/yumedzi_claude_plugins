@@ -29,3 +29,17 @@ test('a narrow ultra strip keeps the costs over the agent and job counts', async
   expect(src).toContain('$48.40')
   await ui.unmount()
 })
+
+test('on a subscription the narrow ultra strip shows the 7D limit over the agent and job counts', async ($, on) => {
+  mock.clock(on, { now: 1_000_000 })
+  on('session.usage', (() => ({ value: { cost: { usd: 1.69 }, context: { tokens: 137000, window: 1000000, percent: 14 }, startedAt: 0, rateLimits: [{ kind: 'five_hour', percentUsed: 64 }, { kind: 'seven_day', percentUsed: 27 }] } })) as any)
+  on('session.turns', (() => ({ value: 3 })) as any)
+  const ui = await $.ui.mount({
+    plugin: 'cool-progress', surface: 'desktop', component: 'Pane', requestId: 'cool-progress',
+    props: { title: 'Cool Progress', isFocused: false, bodyColumns: 52, placement: 'dock', scroll: { bodyRows: 3, contentRows: 0, offset: 0 } } as any,
+  } as any)
+  const svg: any = await ui.find({ type: 'Svg' } as any)
+  const src = String(svg?.props?.source ?? svg?.source ?? JSON.stringify(svg))
+  expect(src).toContain('7D')
+  await ui.unmount()
+})
