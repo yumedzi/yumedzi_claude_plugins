@@ -519,8 +519,10 @@ type StripItem = { icon: string; label: string; value: string; color?: string }
 type StripTail = { agents: string; agentsLive: boolean; tasks: string; tasksLive: boolean }
 // The first `must` items outrank the tail: when it would push any of them out, it is dropped. The
 // caller puts the costs and, on a subscription, the 5H and 7D limits first.
-function stripSvg(w: number, ctx: { pct: number; value: string; color: string } | null, items: StripItem[], tail?: StripTail, must = 2): string {
-  const H = 30
+// Under 30px high (the pane at its smallest, one text line) the strip goes slim: one baseline, each
+// stat as icon, value and a small label after it, the ring shrunk to the line.
+function stripSvg(w: number, ctx: { pct: number; value: string; color: string } | null, items: StripItem[], tail?: StripTail, must = 2, H = 30): string {
+  if (H < 30) return slimStripSvg(w, H, ctx, items, tail, must)
   const layout = (withTail: boolean) => {
     const parts: string[] = []
     let x = 0
@@ -566,6 +568,67 @@ function stripSvg(w: number, ctx: { pct: number; value: string; color: string } 
   }
   let { parts, placed } = layout(true)
   if (tail && placed < Math.min(must, items.length)) parts = layout(false).parts
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${H}" viewBox="0 0 ${w} ${H}"><style>${TXT_CSS}</style>${parts.join('')}</svg>`
+}
+
+function slimStripSvg(w: number, H: number, ctx: { pct: number; value: string; color: string } | null, items: StripItem[], tail: StripTail | undefined, must: number): string {
+  const mid = H / 2
+  const base = mid + 4.3
+  // No labels on one line, the icons say what each value is. Squeezed, the context drops its token
+  // count (`lvl` 1) before a cost is dropped.
+  const layout = (withTail: boolean, lvl: number) => {
+    const parts: string[] = []
+    let x = 0
+    let room = w
+    if (withTail && tail) {
+      // Only the running counts fit on one line: the robot and terminal side by side, pinned right.
+      const a = tail.agents.split(' · ')[0]
+      const t = tail.tasks.split(' · ')[0]
+      const tailW = 13 + a.length * 7 + 8 + 13 + t.length * 7
+      let tx = w - tailW
+      const pair = (name: string, color: string, text: string, isLive: boolean) => {
+        parts.push(`<g opacity="${isLive ? 1 : 0.55}">${icon(name, color, tx, mid - 5.5, 0.68)}`)
+        parts.push(`<text x="${tx + 13}" y="${base}" font-family="${FONT}" font-size="12" font-weight="${isLive ? 700 : 400}" fill="${color}">${xml(text)}</text></g>`)
+        tx += 13 + text.length * 7 + 8
+      }
+      pair('robot', '#a78bfa', a, tail.agentsLive)
+      pair('terminal', '#4ade80', t, tail.tasksLive)
+      room -= tailW + 10
+    }
+    const cell = (it: StripItem, ringPct?: number) => {
+      const iw = ringPct === undefined ? 11 : 13
+      const vw = it.value.length * 7.2
+      if (x + iw + 4 + vw > room) return false
+      if (ringPct === undefined) {
+        parts.push(icon(it.icon, it.color ?? '#8a8a8a', x, mid - 5.5, 0.68))
+      } else {
+        const r = Math.min(5.5, mid - 2)
+        const c = 2 * Math.PI * r
+        const dash = (Math.min(100, Math.max(0, ringPct)) / 100) * c
+        parts.push(`<circle cx="${x + 6.5}" cy="${mid}" r="${r}" fill="none" stroke="#8a8a8a" stroke-opacity="0.25" stroke-width="2.4"/>`)
+        if (dash > 0) parts.push(`<circle cx="${x + 6.5}" cy="${mid}" r="${r}" fill="none" stroke="${it.color}" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="${dash.toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 ${x + 6.5} ${mid})"/>`)
+      }
+      const vx = x + iw + 4
+      parts.push(`<text x="${vx}" y="${base}" font-family="${FONT}" font-size="12" font-weight="700" ${it.color ? `fill="${it.color}"` : 'class="v"'}>${xml(it.value)}</text>`)
+      x = vx + vw + 12
+      return true
+    }
+    if (ctx) cell({ icon: 'chip', label: 'CONTEXT', value: lvl >= 1 ? ctx.value.split(' · ')[0] : ctx.value, color: ctx.color }, ctx.pct)
+    let placed = 0
+    for (const it of items) {
+      if (!cell(it)) break
+      placed++
+    }
+    return { parts, placed }
+  }
+  const need = Math.min(must, items.length)
+  let best = layout(false, 1)
+  for (const lvl of [0, 1]) {
+    const tried = [tail ? layout(true, lvl) : null, layout(false, lvl)].find(o => o && o.placed >= need)
+    if (tried) { best = tried; break }
+  }
+  const parts = best.parts
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${H}" viewBox="0 0 ${w} ${H}"><style>${TXT_CSS}</style>${parts.join('')}</svg>`
 }
@@ -791,11 +854,14 @@ async function draw($: any, e: any, cfg: Cfg, mode: 'band' | 'pane'): Promise<an
     ]
     const ctxVal = `${ctxPct}% · ${tfmt(ctxTokens)}`
     const isUltra = tier === 'ultra'
+    // At its smallest the pane shows two text lines at most, with its own padding eating into them:
+    // the two-line strip clips, so it goes slim, one line high.
+    const stripPx = isUltra && bodyRows <= 2 ? 18 : 30
     const tail: StripTail | undefined = isUltra
       ? { agents: `${runningAgents.length} · ${doneAgents.length} done`, agentsLive: runningAgents.length > 0, tasks: `${runningTasks.length} · ${doneTasks.length} done`, tasksLive: runningTasks.length > 0 }
       : undefined
     const sessionRow = hasSvg ? (
-      <table.Svg source={stripSvg(innerW, ctxWindow > 0 ? { pct: ctxPct, value: ctxVal, color: ctxColor(ctxTokens, ctxPct) } : null, strip, tail, 2 + limits.length)} alt={`context ${ctxVal}`} width={innerW} height={30} />
+      <table.Svg source={stripSvg(innerW, ctxWindow > 0 ? { pct: ctxPct, value: ctxVal, color: ctxColor(ctxTokens, ctxPct) } : null, strip, tail, 2 + limits.length, stripPx)} alt={`context ${ctxVal}`} width={innerW} height={stripPx} />
     ) : (
       <Text wrap="truncate-end">
         {ctxWindow > 0 && <Text color={ctxColor(ctxTokens, ctxPct)} bold>{`${['○', '◔', '◑', '◕', '●'][Math.round(Math.min(100, ctxPct) / 25)]} ${ctxVal}`}</Text>}
