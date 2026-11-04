@@ -17,69 +17,143 @@ const PANE = 'cool-progress'
 const enabledA = atom({ plugin: 'cool-progress', key: 'isEnabled' } as const, true)
 
 // ---------------------------------------------------------------- sprites
-// 8 pixels wide, 4 tall (two text rows of half blocks), two frames each.
+// 14 pixels wide, 8 tall (four text rows of half blocks; the crab is 9 tall and rides the band).
+// Frames cycle while the agent runs, `blink` is drawn over the eyes now and then, and `variants`
+// are palette swaps, so two agents of one kind still look different.
 const BUILTIN: Record<string, Sprite> = {
   crab: {
-    palette: { O: '#d97757', R: '#ee9b7d', E: '#1f1411', L: '#a8452e' },
+    palette: { O: '#d97757', D: '#b4573b', H: '#f2a283', R: '#ee9b7d', r: '#c86a4c', W: '#fff7ed', E: '#2b1b17', L: '#8f3a26', M: '#7a2e1e' },
     frames: [
-      ['RR......RR', 'R.OOOOOO.R', '..OEOOEO..', '.OOOOOOOO.', '..OOOOOO..', '.L.L..L.L.'],
-      ['.RR....RR.', 'R.OOOOOO.R', '..OEOOEO..', '.OOOOOOOO.', '..OOOOOO..', '..L.LL.L..'],
+      ['RR.R......R.RR', 'RRR..W..W..RRR', '.r...E..E...r.', '.r.HHHHHHHH.r.', '..OOOOOOOOOO..', '.OOOOOMMOOOOO.', '..DDDDDDDDDD..', '.L.L.L..L.L.L.', 'L.L.L....L.L.L'],
+      ['.RR........RR.', 'RRRR.W..W.RRRR', '.r...E..E...r.', '.r.HHHHHHHH.r.', '..OOOOOOOOOO..', '.OOOOOMMOOOOO.', '..DDDDDDDDDD..', '..L.L.LL.L.L..', '.L.L......L.L.'],
     ],
+    blink: ['..............', '.....L..L.....', '.....L..L.....'],
   },
   robot: {
-    palette: { A: '#ef4444', H: '#94a3b8', E: '#22d3ee', B: '#64748b' },
+    palette: { A: '#ef4444', a: '#64748b', H: '#94a3b8', h: '#64748b', E: '#22d3ee', M: '#1e293b', Y: '#facc15', B: '#475569', b: '#334155' },
     frames: [
-      ['...A....', '.HHHHHH.', '.HEHHEH.', '..BBBB..'],
-      ['........', '.HHHHHH.', '.HHHHHH.', '..BBBB..'],
+      ['......A.......', '......a.......', '..HHHHHHHHHH..', '.hHEEHHHHEEHh.', '.hHEEHHHHEEHh.', '..HHMYMYMYHH..', '..bBBBBBBBBb..', '..h.hh..hh.h..'],
+      ['......Y.......', '......a.......', '..HHHHHHHHHH..', '.hHHEEHHHHEEh.', '.hHHEEHHHHEEh.', '..HHYMYMYMHH..', '..bBBBBBBBBb..', '..h.hh..hh.h..'],
+      ['......A.......', '......a.......', '..HHHHHHHHHH..', '.hEEHHHHEEHHh.', '.hEEHHHHEEHHh.', '..HHMYMYMYHH..', '..bBBBBBBBBb..', '...hh.hh.hh...'],
     ],
+    blink: ['..............', '..............', '..............', '...HH....HH...', '...hh....hh...'],
+    variants: [{}, { H: '#fbbf24', h: '#b45309', B: '#92400e', b: '#78350f' }, { H: '#c4b5fd', h: '#7c3aed', B: '#5b21b6', b: '#4c1d95', E: '#f0abfc' }],
   },
   owl: {
-    palette: { O: '#a16207', W: '#fef9c3', P: '#111827', B: '#d97706', Y: '#facc15' },
+    palette: { O: '#a16207', o: '#78350f', W: '#fef9c3', P: '#111827', B: '#f59e0b', F: '#d6a35c', Y: '#facc15' },
     frames: [
-      ['O.OOOO.O', 'OWPOOPWO', '.OOBBOO.', '..Y..Y..'],
-      ['O.OOOO.O', 'OOOOOOOO', '.OOBBOO.', '..Y..Y..'],
+      ['..oo......oo..', '..oOOOOOOOOo..', '.OWWWOOOOWWWO.', '.OWPWOBBOWPWO.', '.OWWWOBBOWWWO.', 'oOOFFFFFFFFOOo', '.oOFFFFFFFFOo.', '...YY....YY...'],
+      ['..oo......oo..', '..oOOOOOOOOo..', '.OWWWOOOOWWWO.', '.OPWWOBBOPWWO.', '.OWWWOBBOWWWO.', '.OOFFFFFFFFOO.', 'oOOFFFFFFFFOOo', '...YY....YY...'],
     ],
+    blink: ['..............', '..............', '..OOO....OOO..', '..ooo....ooo..', '..OOO....OOO..'],
+    variants: [{}, { O: '#9ca3af', o: '#4b5563', F: '#e5e7eb' }, { O: '#e5e7eb', o: '#9ca3af', F: '#f8fafc', W: '#fde68a' }],
   },
   cat: {
-    palette: { K: '#6b7280', G: '#4ade80', N: '#f9a8d4' },
+    palette: { K: '#6b7280', k: '#4b5563', G: '#4ade80', E: '#111827', N: '#f9a8d4', W: '#d1d5db', T: '#6b7280' },
     frames: [
-      ['K.KKKK.K', 'KKKKKKKK', 'KGKKKKGK', '.KKNNKK.'],
-      ['K.KKKK.K', 'KKKKKKKK', 'KKKKKKKK', '.KKNNKK.'],
+      ['.k........k...', '.kK......Kk...', '.KKKKKKKKKK...', '.KGEKKKKGEK..T', 'WKKKKNNKKKKW.T', '.KKKKkkKKKK..T', '..KKKKKKKK..TT', '..k.k..k.k.TT.'],
+      ['.k............', '.kK......Kk...', '.KKKKKKKKKK...', '.KEGKKKKEGK...', 'WKKKKNNKKKKW..', '.KKKKkkKKKK...', '..KKKKKKKK.TTT', '..k.k..k.k.T..'],
     ],
+    blink: ['..............', '..............', '..............', '..kk....kk....'],
+    variants: [{}, { K: '#f59e0b', k: '#b45309', T: '#f59e0b' }, { K: '#e5e7eb', k: '#9ca3af', T: '#e5e7eb', G: '#60a5fa', W: '#9ca3af' }, { K: '#3f3f46', k: '#18181b', T: '#3f3f46', G: '#facc15', W: '#a1a1aa' }],
   },
   ghost: {
-    palette: { W: '#e2e8f0', E: '#1e293b' },
+    palette: { W: '#e2e8f0', w: '#94a3b8', E: '#1e293b', B: '#fda4af' },
     frames: [
-      ['..WWWW..', '.WWWWWW.', '.WEWWEW.', '.W.WW.W.'],
-      ['..WWWW..', '.WWWWWW.', '.WEWWEW.', 'W.W..W.W'],
+      ['....WWWWWW....', '...WWWWWWWW...', '..WWEEWWEEWW..', '..WWEEWWEEWW..', '..WBWWEEWWBW..', '..WWWWWWWWWW..', '..WwWWWWWWwW..', '..W.WW..WW.W..'],
+      ['....WWWWWW....', '...WWWWWWWW...', '..WWWEEWWEEW..', '..WWWEEWWEEW..', '..WBWWWEEWBW..', '..WWWWWWWWWW..', '..WwWWWWWWwW..', '..WW.WW..WW.W.'],
     ],
+    blink: ['..............', '..............', '..............', '....ww..ww....'],
+    variants: [{}, { W: '#bae6fd', w: '#38bdf8' }, { W: '#bbf7d0', w: '#4ade80' }],
   },
   wizard: {
-    palette: { P: '#7c3aed', S: '#fcd9b6', E: '#111827', B: '#e5e7eb', s: '#fde047' },
+    palette: { P: '#7c3aed', p: '#5b21b6', s: '#fde047', S: '#fcd9b6', E: '#111827', B: '#e5e7eb', R: '#4c1d95', W: '#a16207' },
     frames: [
-      ['...PP...', '..PPPP..', '.SESSES.', '..BBBB..'],
-      ['..sPP...', '..PPPP..', '.SESSES.', '..BBBB..'],
+      ['.......P......', '......PPs.....', '.....PPPPP....', '...pPPPPPPPp..', '....SESSES....', '....BBSSBB..s.', '...RBBBBBBR.W.', '...RRBBBBRRW..'],
+      ['.......P......', '......PP......', '.....PPPPP....', '...pPPPPPPPp..', '....SESSES..s.', '....BBSSBB....', '...RBBBBBBR.W.', '...RRBBBBRRW..'],
+      ['.......P......', '......PPs.....', '.....PPPPP....', '...pPPPPPPPp..', '....SESSES....', '....BBSSBB...s', '...RBBBBBBR.W.', '...RRBBBBRRW..'],
     ],
+    blink: ['..............', '..............', '..............', '..............', '.....S..S.....'],
+    variants: [{}, { P: '#2563eb', p: '#1e40af', R: '#1e3a8a' }, { P: '#16a34a', p: '#166534', R: '#14532d' }],
+  },
+  fox: {
+    palette: { F: '#f97316', f: '#c2410c', W: '#fff7ed', E: '#111827', N: '#1f2937' },
+    frames: [
+      ['.f........f...', '.fF......Ff...', '.FFFFFFFFFF...', '.FFEFFFFEFF...', '.FWWWNNWWWF...', '..FWWWWWWF..FF', '...FFFFFF..FFW', '...f.ff.f.FFW.'],
+      ['.f........f...', '.fF......Ff...', '.FFFFFFFFFF...', '.FFEFFFFEFF...', '.FWWWNNWWWF...', '..FWWWWWWF....', '...FFFFFF.FFFW', '...f.ff.f..FF.'],
+    ],
+    blink: ['..............', '..............', '..............', '...f....f.....'],
+    variants: [{}, { F: '#e5e7eb', f: '#9ca3af', W: '#ffffff' }, { F: '#78350f', f: '#451a03' }],
+  },
+  octopus: {
+    palette: { M: '#c084fc', m: '#9333ea', W: '#ffffff', E: '#111827' },
+    frames: [
+      ['....MMMMMM....', '...MMMMMMMM...', '..MMWEMMWEMM..', '..MMMMMMMMMM..', '..MMmMMMMmMM..', '.M.MM.MM.MM.M.', 'M..M..M..M..M.', '.M..M..M..M..M'],
+      ['....MMMMMM....', '...MMMMMMMM...', '..MMEWMMEWMM..', '..MMMMMMMMMM..', '..MMmMMMMmMM..', '..MM.MM.MM.MM.', '.M..M..M..M..M', 'M..M..M..M..M.'],
+    ],
+    blink: ['..............', '..............', '....mm..mm....'],
+    variants: [{}, { M: '#fb7185', m: '#e11d48' }, { M: '#38bdf8', m: '#0369a1' }],
+  },
+  frog: {
+    palette: { G: '#4ade80', g: '#16a34a', W: '#ffffff', E: '#111827', R: '#f87171', Y: '#bbf7d0' },
+    frames: [
+      ['..gWWg..gWWg..', '..gWEg..gWEg..', '.GGGGGGGGGGGG.', '.GGGGGGGGGGGG.', '.GRRRRRRRRRRG.', '..GYYYYYYYYG..', '.gGGYYYYYYGGg.', 'gg.g......g.gg'],
+      ['..gWWg..gWWg..', '..gEWg..gEWg..', '.GGGGGGGGGGGG.', '.GGGGGGGGGGGG.', '.GGGGRRRRGGGG.', '..GYYYRRYYYG..', '.gGGYYYYYYGGg.', '.gg.g....g.gg.'],
+    ],
+    blink: ['..gggg..gggg..', '..gggg..gggg..'],
+    variants: [{}, { G: '#a3e635', g: '#4d7c0f' }, { G: '#2dd4bf', g: '#0f766e', Y: '#ccfbf1' }],
+  },
+  dragon: {
+    palette: { D: '#14b8a6', d: '#0f766e', Y: '#fde68a', E: '#111827', W: '#5eead4', F: '#fb923c', f: '#facc15' },
+    frames: [
+      ['.d..d.........', '.DDDD....WW...', '.DEDDDD.WWWW..', '.DDDDDDDDWW...', '..DYYDDDDD....', '..DYYYDDDDD.Dd', '..DDYYDDDDDDd.', '...d.d...d.d..'],
+      ['.d..d.........', 'fDDDD.....WWW.', 'FDEDDDD..WWWW.', '.DDDDDDDDWW...', '..DYYDDDDD....', '..DYYYDDDDD.Dd', '..DDYYDDDDDDd.', '...d.d...d.d..'],
+      ['.d..d.........', '.DDDD.........', '.DEDDDD..WW...', '.DDDDDDDWWWW..', '..DYYDDDDWW...', '..DYYYDDDDD..d', '..DDYYDDDDDDDd', '...d.d...d.d..'],
+    ],
+    blink: ['..............', '..............', '..D...........'],
+    variants: [{}, { D: '#ef4444', d: '#991b1b', W: '#fca5a5' }, { D: '#8b5cf6', d: '#5b21b6', W: '#c4b5fd' }],
+  },
+  penguin: {
+    palette: { K: '#475569', W: '#f8fafc', B: '#f59e0b', E: '#111827', F: '#f97316', S: '#ef4444' },
+    frames: [
+      ['....KKKKKK....', '...KKWWWWKK...', '...KWEWWEWK...', '...KWWBBWWK...', '..KSSSSSSSSK..', '.KKWWWWWWWWKK.', '..KWWWWWWWWK..', '...FF....FF...'],
+      ['....KKKKKK....', '...KKWWWWKK...', '...KWEWWEWK...', '...KWWBBWWK...', '..KSSSSSSSSK..', '..KWWWWWWWWK..', '.KKWWWWWWWWKK.', '....FF..FF....'],
+    ],
+    blink: ['..............', '..............', '.....W..W.....'],
+    variants: [{}, { S: '#3b82f6' }, { S: '#22c55e' }],
   },
 }
 
 const KEYWORDS: [RegExp, string][] = [
+  [/secur|vuln|snyk|threat|cve|exploit/i, 'dragon'],
+  [/break|claim|probe|adversar|verif|challeng|attack|red.?team/i, 'fox'],
+  [/data|sql|query|databricks|table|metric|log/i, 'penguin'],
+  [/parallel|multi|batch|fan|orchestr|workflow|coordinat/i, 'octopus'],
+  [/deploy|ship|release|launch|exec|run\b/i, 'frog'],
+  [/background|cleanup|silent|archive|stash/i, 'ghost'],
   [/scout|explor|search|recon|find|locate/i, 'crab'],
-  [/research|web|doc|read|brief/i, 'owl'],
+  [/research|web|doc|read|brief|fetch/i, 'owl'],
   [/review|test|qa|lint|audit|check/i, 'cat'],
   [/deep|think|plan|architect|design|reason/i, 'wizard'],
   [/work|code|impl|edit|build|fix|write/i, 'robot'],
 ]
 
-function pickSprite(type: string, label: string, mapText: string, fallback: string, known: string[]): string {
+const hashOf = (t: string) => [...t].reduce((n, ch) => (n * 31 + ch.charCodeAt(0)) >>> 0, 7)
+
+// The mascot map wins, then the role keywords. With neither (and no default mascot set), the agent
+// gets a kind no running agent has yet, so a row of agents is a row of different animals.
+function pickSprite(type: string, label: string, mapText: string, fallback: string, known: string[], inUse: string[]): string {
   for (const part of mapText.split(',')) {
     const [key, val] = part.split('=').map(s => s.trim())
     if (key && val && (key === type || key === label) && known.includes(val)) return val
   }
   const hay = `${type} ${label}`
   for (const [re, name] of KEYWORDS) if (re.test(hay) && known.includes(name)) return name
+  if (fallback && known.includes(fallback)) return fallback
+  const free = known.filter(n => !inUse.includes(n))
+  const pool = free.length > 0 ? free : known
 
-  return known.includes(fallback) ? fallback : 'crab'
+  return pool[hashOf(hay) % pool.length] ?? 'crab'
 }
 
 // ---------------------------------------------------------------- pricing
@@ -264,16 +338,17 @@ function bar(Text: any, width: number, shown: number, tick: number, isLive: bool
   return runs.map(r => <Text color={r.color} bold={r.bold === true}>{r.ch}</Text>)
 }
 
-function spriteRows(Box: any, Text: any, sp: Sprite, frame: number, isDim: boolean) {
+function spriteRows(Box: any, Text: any, sp: Sprite, frame: number, isDim: boolean, variant = 0) {
   const g = sp.frames[frame % sp.frames.length]!
+  const pal = paletteOf(sp, variant)
   const out: any[] = []
   for (let r = 0; r + 1 < g.length; r += 2) {
     const top = g[r]!
     const bot = g[r + 1]!
     const runs: { ch: string; fg?: string; bg?: string }[] = []
     for (let c = 0; c < top.length; c++) {
-      const t = sp.palette[top[c]!]
-      const b = sp.palette[bot[c] ?? '.']
+      const t = pal[top[c]!]
+      const b = pal[bot[c] ?? '.']
       const cell: { ch: string; fg?: string; bg?: string } =
         t && b ? { ch: '▀', fg: t, bg: b } : t ? { ch: '▀', fg: t } : b ? { ch: '▄', fg: b } : { ch: ' ' }
       const last = runs[runs.length - 1]
@@ -298,9 +373,32 @@ function spriteRows(Box: any, Text: any, sp: Sprite, frame: number, isDim: boole
 // ---------------------------------------------------------------- desktop SVG (static source, CSS-animated)
 // The source only changes on real events (a step, a tool call), so the image is never
 // reloaded between them; every motion below is a CSS or SMIL animation inside the SVG.
-const CRAB_A = ['RR......RR', 'R.OOOOOO.R', '..OEOOEO..', '.OOOOOOOO.', '..OOOOOO..', '.L.L..L.L.']
-const CRAB_B = ['.RR....RR.', 'R.OOOOOO.R', '..OEOOEO..', '.OOOOOOOO.', '..OOOOOO..', '..L.LL.L..']
-const CRAB_PAL: Record<string, string> = { O: '#d97757', R: '#ee9b7d', E: '#2b1b17', L: '#a8452e' }
+// A sprite as SVG markup, its frames stacked and cycled by CSS: every frame shows for its share of
+// `period`, steps(1), so the pixels never blend. `blink` lays closed eyes over it for a moment
+// every few seconds and the whole sprite bobs a pixel. Class and keyframe names carry `id`, since
+// several sprites can share one page. Idle, it holds frame 0 and only blinks, slower.
+function animSprite(sp: Sprite, pal: Record<string, string>, u: number, isLive: boolean, id: string, period = 0.8): { css: string; body: string } {
+  const n = Math.max(1, sp.frames.length)
+  const step = period / n
+  let css = `@keyframes ${id}f{0%{opacity:1}${(100 / n).toFixed(2)}%{opacity:0}100%{opacity:0}}`
+  css += `@keyframes ${id}k{0%,93%{opacity:0}94%,98%{opacity:1}99%,100%{opacity:0}}`
+  css += `@keyframes ${id}b{0%,100%{transform:translateY(0)}50%{transform:translateY(-${(u * 0.5).toFixed(1)}px)}}`
+  for (let k = 0; k < n; k++) {
+    css += isLive
+      ? `.${id}-f${k}{animation:${id}f ${period}s steps(1) infinite;animation-delay:-${(((n - k) % n) * step).toFixed(2)}s}`
+      : `.${id}-f${k}{opacity:${k === 0 ? 1 : 0}}`
+  }
+  const blinkDelay = (hashOf(id) % 30) / 10
+  css += `.${id}-e{opacity:0;animation:${id}k ${isLive ? 3.6 : 5.2}s steps(1) infinite;animation-delay:-${blinkDelay}s}`
+  css += isLive ? `.${id}-o{animation:${id}b ${period}s steps(2) infinite}` : ''
+  css += `@media (prefers-reduced-motion: reduce){[class^="${id}-"]{animation:none}}`
+  const frames = sp.frames.map((g, k) => `<g class="${id}-f${k}">${gridRects(g, pal, u)}</g>`).join('')
+  const blink = sp.blink ? `<g class="${id}-e">${gridRects(sp.blink, pal, u)}</g>` : ''
+
+  return { css, body: `<g class="${id}-o">${frames}${blink}</g>` }
+}
+
+const paletteOf = (sp: Sprite, variant = 0) => ({ ...sp.palette, ...(sp.variants?.[variant % sp.variants.length] ?? {}) })
 
 function noise(a: number, b: number): number {
   let h = (a * 374761393 + b * 668265263) | 0
@@ -326,11 +424,12 @@ const SVG_CSS = (isLive: boolean) => `<style>
 .t0,.t1,.t2,.t3{animation:tw 2.2s ease-in-out infinite}
 .t1{animation-duration:2.8s;animation-delay:-.7s}.t2{animation-duration:1.9s;animation-delay:-1.3s}.t3{animation-duration:3.3s;animation-delay:-.4s}
 @keyframes tw{0%,100%{opacity:1}50%{opacity:.3}}
-.fb{opacity:0}
-${isLive ? '.fa{animation:sa .5s steps(1) infinite}.fb{animation:sb .5s steps(1) infinite}.bob{animation:bob .5s steps(1) infinite}' : ''}
-@keyframes sa{0%{opacity:1}50%{opacity:0}}@keyframes sb{0%{opacity:0}50%{opacity:1}}@keyframes bob{50%{transform:translateY(-1px)}}
-@media (prefers-reduced-motion: reduce){.t0,.t1,.t2,.t3,.fa,.fb,.bob{animation:none}}
+@media (prefers-reduced-motion: reduce){.t0,.t1,.t2,.t3{animation:none}}
 </style>`
+
+// The band's crab: 14 x 9 pixels of 2.1px, about 29 x 19, inside the 24px band.
+const CRAB_U = 2.1
+const CRAB_W = 14 * CRAB_U
 
 function dotBar(w: number, to: number, hasCrab: boolean, isLive: boolean): string {
   const bH = hasCrab ? 18 : 8
@@ -344,7 +443,7 @@ function dotBar(w: number, to: number, hasCrab: boolean, isLive: boolean): strin
   }
   // The crab rides the track and the fill always ends where the crab begins, so at 0% there are
   // no dots under it and at 100% the crab sits at the far end.
-  const crabX = Math.min(Math.max(to, 0), 1) * (w - 30)
+  const crabX = Math.min(Math.max(to, 0), 1) * (w - CRAB_W - 1)
   const fe = crabX
   const cols = Math.floor(fe / cell)
   // The fill keeps the track's rounded left end but is cut flat on the right, where the crab begins.
@@ -378,14 +477,14 @@ function dotBar(w: number, to: number, hasCrab: boolean, isLive: boolean): strin
     }
   }
   const flowCss = `<style>.flow{${isLive ? 'animation:flow 1.8s steps(18) infinite' : ''}}@keyframes flow{to{transform:translateX(-${(PERIOD * cell).toFixed(1)}px)}}@media (prefers-reduced-motion: reduce){.flow{animation:none}}</style>`
-  const crabY = y0 + (bH - 16.8) / 2
+  const crabY = y0 + (bH - CRAB_U * BUILTIN.crab!.frames[0]!.length) / 2
   let ticks = ''
   for (const i of [1, 2, 3]) {
     const x = (w * i) / 4
     if (x > fe + 40) ticks += `<rect x="${(x - 1).toFixed(1)}" y="${(y0 + bH / 2 - 4).toFixed(1)}" width="2" height="8" rx="1" fill="#8a8a8a" fill-opacity="0.4"/>`
   }
-  const crab = `<g transform="translate(${crabX.toFixed(1)} 0)">
-<g transform="translate(0 ${crabY.toFixed(1)})"><g class="bob"><g class="fa">${gridRects(CRAB_A, CRAB_PAL, 2.8)}</g><g class="fb">${gridRects(CRAB_B, CRAB_PAL, 2.8)}</g></g></g></g>`
+  const pet = animSprite(BUILTIN.crab!, BUILTIN.crab!.palette, CRAB_U, isLive, 'cr', 0.6)
+  const crab = `<style>${pet.css}</style><g transform="translate(${crabX.toFixed(1)} ${crabY.toFixed(1)})">${pet.body}</g>`
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${H}" viewBox="0 0 ${w} ${H}">
 ${SVG_CSS(isLive)}${flowCss}
@@ -402,15 +501,13 @@ ${crab}
 </svg>`
 }
 
-function spriteSvg(sp: Sprite, u: number, isLive: boolean): string {
-  const w = (sp.frames[0]![0]!.length * u).toFixed(0)
-  const h = (sp.frames[0]!.length * u).toFixed(0)
-  const groups = sp.frames
-    .slice(0, 2)
-    .map((g, i, all) => `<g class="${all.length === 1 ? '' : i === 0 ? 'fa' : 'fb'}">${gridRects(g, sp.palette, u)}</g>`)
-    .join('')
+function spriteSvg(sp: Sprite, u: number, isLive: boolean, variant: number, seed: string): string {
+  const w = Math.round(sp.frames[0]![0]!.length * u)
+  const h = Math.round(sp.frames[0]!.length * u)
+  const id = 's' + (hashOf(seed) % 1e6).toString(36)
+  const a = animSprite(sp, paletteOf(sp, variant), u, isLive, id, 0.9)
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${Number(h) + 2}" viewBox="0 -1 ${w} ${Number(h) + 2}">${SVG_CSS(isLive)}<g class="bob">${groups}</g></svg>`
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h + 2}" viewBox="0 -2 ${w} ${h + 2}"><style>${a.css}</style>${a.body}</svg>`
 }
 
 
@@ -420,6 +517,34 @@ const ctxMaxOf = (model: string) => (/haiku-4/.test(model) ? 200000 : 1000000)
 
 // A terminal glyph of fixed size. The cursor blinks with a CSS animation inside the image, so the
 // text beside it never moves.
+// The band's jobs counter: a terminal window, title-bar dots and a prompt; the cursor blinks while
+// a job runs.
+// The band's sub-agents counter, the terminal chip's sibling: a robot head on a dark plate with ears,
+// a mouth grille and an antenna. While an agent runs the antenna tip glows and the eyes scan side to
+// side and blink.
+// Each chip carries its count, drawn 4px after the icon, so the number sits snug against it.
+const chipW = (n: number) => Math.ceil(24 + String(n).length * 7.6)
+const chipCount = (n: number, color: string, isLive: boolean) =>
+  `<text x="24" y="12.6" font-family="${FONT}" font-size="13" font-weight="${isLive ? 700 : 400}" fill="${color}" fill-opacity="${isLive ? 1 : 0.6}">${n}</text>`
+
+function robotChip(n: number): string {
+  const isLive = n > 0
+  const c = isLive ? '#a78bfa' : '#6b7280'
+  const eye = isLive ? '#67e8f9' : '#6b7280'
+  const css = isLive
+    ? '.gl{animation:gl 1.6s ease-in-out infinite}@keyframes gl{50%{opacity:.25}}.ey{animation:ey 3.2s steps(1) infinite}@keyframes ey{0%{transform:translateX(0)}30%{transform:translateX(1px)}55%{transform:translateX(-1px)}80%{transform:translateX(0)}}.bk{animation:bk 3.2s steps(1) infinite}@keyframes bk{0%,88%{transform:scaleY(1)}89%,93%{transform:scaleY(.15)}94%{transform:scaleY(1)}}.bk{transform-origin:10px 8.6px}'
+    : ''
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${chipW(n)}" height="16" viewBox="0 0 ${chipW(n)} 16"><style>${css}@media (prefers-reduced-motion: reduce){.gl,.ey,.bk{animation:none}}</style><path d="M10 3.4V1.8" stroke="${c}" stroke-width="1.3" stroke-linecap="round"/><circle class="gl" cx="10" cy="1.5" r="1.3" fill="${isLive ? '#f0abfc' : c}"/><rect x="0.9" y="6.6" width="2" height="4.6" rx="1" fill="${c}"/><rect x="17.1" y="6.6" width="2" height="4.6" rx="1" fill="${c}"/><rect x="3.4" y="3.75" width="13.2" height="11.5" rx="3.2" fill="#1a1433" stroke="${c}" stroke-width="1.5"/><g class="bk"><g class="ey"><rect x="6" y="7.3" width="2.4" height="2.6" rx="1" fill="${eye}"/><rect x="11.6" y="7.3" width="2.4" height="2.6" rx="1" fill="${eye}"/></g></g><path d="M7.2 12.4h5.6" stroke="${c}" stroke-width="1.1" stroke-linecap="round" stroke-dasharray="1.1 1"/>${chipCount(n, '#a78bfa', isLive)}</svg>`
+}
+
+function termChip(n: number): string {
+  const isLive = n > 0
+  const c = isLive ? '#4ade80' : '#6b7280'
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${chipW(n)}" height="16" viewBox="0 0 ${chipW(n)} 16"><style>.cu{${isLive ? 'animation:cu 1s steps(1) infinite' : ''}}@keyframes cu{50%{opacity:0}}@media (prefers-reduced-motion: reduce){.cu{animation:none}}</style><rect x="0.75" y="0.75" width="18.5" height="14.5" rx="3" fill="#0b1f14" stroke="${c}" stroke-width="1.5"/><path d="M0.75 4.6h18.5" stroke="${c}" stroke-width="1"/><circle cx="3.4" cy="2.7" r="0.8" fill="#f87171"/><circle cx="5.8" cy="2.7" r="0.8" fill="#fbbf24"/><circle cx="8.2" cy="2.7" r="0.8" fill="#4ade80"/><path d="M4 7.6l2.6 2.1L4 11.8" fill="none" stroke="${c}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><rect class="cu" x="8.4" y="10.9" width="5" height="1.5" rx="0.6" fill="${c}"/>${chipCount(n, '#4ade80', isLive)}</svg>`
+}
+
 function termIcon(status: 'running' | 'done' | 'failed'): string {
   const mark =
     status === 'running'
@@ -444,7 +569,12 @@ const ICONS: Record<string, string> = {
   coin: '<circle cx="8" cy="8" r="6"/><path d="M8 4.5v7M10 6.3c-.4-.6-1.2-1-2-1-1 0-2 .5-2 1.5S7 8 8 8s2 .5 2 1.5-1 1.5-2 1.5c-.9 0-1.6-.4-2-1"/>',
   chip: '<rect x="4" y="4" width="8" height="8" rx="1.5"/><path d="M6.5 1.5V4M9.5 1.5V4M6.5 12v2.5M9.5 12v2.5M1.5 6.5H4M1.5 9.5H4M12 6.5h2.5M12 9.5h2.5"/>',
   clock: '<circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2.5 1.5"/>',
+  // The rate limits: an hourglass for the 5-hour window, a calendar for the 7-day one.
+  hourglass: '<path d="M4 2h8M4 14h8M5 2c0 3.5 6 3.5 6 6s-6 2.5-6 6M11 2c0 3.5-6 3.5-6 6s6 2.5 6 6"/>',
+  calendar: '<rect x="2" y="3.5" width="12" height="10.5" rx="2"/><path d="M2 7h12M5.5 2v3M10.5 2v3"/><circle cx="8" cy="10.5" r="1" fill="CLR" stroke="none"/>',
 }
+
+const limitIcon = (kind: string) => (kind === 'five_hour' ? 'hourglass' : kind === 'seven_day' ? 'calendar' : 'clock')
 
 const icon = (name: string, color: string, x: number, y: number, scale: number) =>
   `<g transform="translate(${x} ${y}) scale(${scale})" fill="none" stroke="${color}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${(ICONS[name] ?? '').replace(/CLR/g, color)}</g>`
@@ -514,15 +644,13 @@ ${dash > 0 ? `<circle cx="${m}" cy="${m}" r="${r}" fill="none" stroke="${color}"
 
 // The compact SESSION strip, one row high: the context ring first, then the other stats as icon,
 // label and value, in priority order, each dropped whole when the width runs out.
-type StripItem = { icon: string; label: string; value: string; color?: string }
+type StripItem = { icon: string; label: string; value: string; color?: string; bars?: { pct: number; color: string }[] }
 // `tail`, when given, is the last column, pinned right: the agents and background counts stacked.
 type StripTail = { agents: string; agentsLive: boolean; tasks: string; tasksLive: boolean }
 // The first `must` items outrank the tail: when it would push any of them out, it is dropped. The
 // caller puts the costs and, on a subscription, the 5H and 7D limits first.
-// Under 30px high (the pane at its smallest, one text line) the strip goes slim: one baseline, each
-// stat as icon, value and a small label after it, the ring shrunk to the line.
-function stripSvg(w: number, ctx: { pct: number; value: string; color: string } | null, items: StripItem[], tail?: StripTail, must = 2, H = 30): string {
-  if (H < 30) return slimStripSvg(w, H, ctx, items, tail, must)
+function stripSvg(w: number, ctx: { pct: number; value: string; color: string } | null, items: StripItem[], tail?: StripTail, must = 2): string {
+  const H = 30
   const layout = (withTail: boolean) => {
     const parts: string[] = []
     let x = 0
@@ -572,13 +700,31 @@ function stripSvg(w: number, ctx: { pct: number; value: string; color: string } 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${H}" viewBox="0 0 ${w} ${H}"><style>${TXT_CSS}</style>${parts.join('')}</svg>`
 }
 
-function slimStripSvg(w: number, H: number, ctx: { pct: number; value: string; color: string } | null, items: StripItem[], tail: StripTail | undefined, must: number): string {
+// Each group is its own small SVG, so the pane's row can spread them across its real width: `w`, from
+// the column count, is only a floor for deciding what fits.
+function slimStripGroups(w: number, H: number, ctx: { pct: number; value: string; color: string } | null, allItems: StripItem[], tail: StripTail | undefined, mustAll: number): { svg: string; w: number }[] {
   const mid = H / 2
+  // On a subscription the 5H and 7D limits fold into one cell: two thin bars, 5H's number above
+  // and 7D's below, as narrow as a single stat.
+  const hi = allItems.findIndex(it => it.icon === 'hourglass')
+  const di = allItems.findIndex(it => it.icon === 'calendar')
+  const pctOf = (it: StripItem) => parseFloat(it.value) || 0
+  const items = hi < 0 || di < 0 ? allItems : allItems.flatMap((it, k) =>
+    k === Math.min(hi, di) ? [{ icon: 'limits', label: '5H/7D', value: '', bars: [allItems[hi], allItems[di]].map(l => ({ pct: pctOf(l), color: l.color ?? '#8a8a8a' })) }] : k === hi || k === di ? [] : [it])
+  const must = mustAll - (items.length < allItems.length ? 1 : 0)
   const base = mid + 4.3
   // No labels on one line, the icons say what each value is. Squeezed, the context drops its token
-  // count (`lvl` 1) before a cost is dropped.
+  // count, and the gaps between the groups close up, before a stat is dropped. LEVELS is that order.
+  // Text width by glyph, the system font's bold at 12px: dots and spaces are narrow, % is wide.
+  const textW = (t: string) => [...t].reduce((n, ch) => n + (ch === '.' || ch === ' ' || ch === '·' ? 3.4 : ch === '%' ? 10.2 : ch === '$' ? 7 : 7.1), 0)
+  const LEVELS = [{ tokens: true, gap: 18 }, { tokens: true, gap: 12 }, { tokens: false, gap: 18 }, { tokens: false, gap: 12 }, { tokens: false, gap: 7 }]
   const layout = (withTail: boolean, lvl: number) => {
-    const parts: string[] = []
+    const { tokens, gap } = LEVELS[lvl]
+    const groups: { x0: number; w: number; parts: string[] }[] = []
+    let parts: string[] = []
+    const open = (x0: number) => { parts = []; groups.push({ x0, w: 0, parts }) }
+    const close = (x1: number) => { const g = groups[groups.length - 1]; g.w = x1 - g.x0 }
+    let tailGroup: { x0: number; w: number; parts: string[] } | null = null
     let x = 0
     let room = w
     if (withTail && tail) {
@@ -587,6 +733,7 @@ function slimStripSvg(w: number, H: number, ctx: { pct: number; value: string; c
       const t = tail.tasks.split(' · ')[0]
       const tailW = 13 + a.length * 7 + 8 + 13 + t.length * 7
       let tx = w - tailW
+      open(tx)
       const pair = (name: string, color: string, text: string, isLive: boolean) => {
         parts.push(`<g opacity="${isLive ? 1 : 0.55}">${icon(name, color, tx, mid - 5.5, 0.68)}`)
         parts.push(`<text x="${tx + 13}" y="${base}" font-family="${FONT}" font-size="12" font-weight="${isLive ? 700 : 400}" fill="${color}">${xml(text)}</text></g>`)
@@ -594,12 +741,30 @@ function slimStripSvg(w: number, H: number, ctx: { pct: number; value: string; c
       }
       pair('robot', '#a78bfa', a, tail.agentsLive)
       pair('terminal', '#4ade80', t, tail.tasksLive)
+      close(w)
+      tailGroup = groups.pop() ?? null
       room -= tailW + 10
     }
     const cell = (it: StripItem, ringPct?: number) => {
+      if (it.bars) {
+        const bw = 26
+        if (x + bw > room) return false
+        open(x)
+        const [top, bot] = it.bars
+        const bar = (y: number, b: { pct: number; color: string }) =>
+          `<rect x="${x}" y="${y}" width="${bw}" height="2.4" rx="1.2" fill="#8a8a8a" fill-opacity="0.3"/>` +
+          (b.pct > 0 ? `<rect x="${x}" y="${y}" width="${((Math.min(100, b.pct) / 100) * bw).toFixed(1)}" height="2.4" rx="1.2" fill="${b.color}"/>` : '')
+        const num = (y: number, b: { pct: number; color: string }) =>
+          `<text x="${x + bw / 2}" y="${y}" text-anchor="middle" font-family="${FONT}" font-size="6.5" font-weight="700" fill="${b.color}">${Math.round(b.pct)}</text>`
+        parts.push(num(mid - 3.6, top), bar(mid - 2.2, top), bar(mid + 0.8, bot), num(mid + 8.6, bot))
+        close(x + bw)
+        x += bw + gap
+        return true
+      }
       const iw = ringPct === undefined ? 11 : 13
-      const vw = it.value.length * 7.2
-      if (x + iw + 4 + vw > room) return false
+      const vw = textW(it.value)
+      if (x + iw + 3 + vw > room) return false
+      open(x - 1)
       if (ringPct === undefined) {
         parts.push(icon(it.icon, it.color ?? '#8a8a8a', x, mid - 5.5, 0.68))
       } else {
@@ -609,28 +774,32 @@ function slimStripSvg(w: number, H: number, ctx: { pct: number; value: string; c
         parts.push(`<circle cx="${x + 6.5}" cy="${mid}" r="${r}" fill="none" stroke="#8a8a8a" stroke-opacity="0.25" stroke-width="2.4"/>`)
         if (dash > 0) parts.push(`<circle cx="${x + 6.5}" cy="${mid}" r="${r}" fill="none" stroke="${it.color}" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="${dash.toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 ${x + 6.5} ${mid})"/>`)
       }
-      const vx = x + iw + 4
+      const vx = x + iw + 3
       parts.push(`<text x="${vx}" y="${base}" font-family="${FONT}" font-size="12" font-weight="700" ${it.color ? `fill="${it.color}"` : 'class="v"'}>${xml(it.value)}</text>`)
-      x = vx + vw + 12
+      // The width estimate runs a little short on real glyphs; a group's own Svg would clip it.
+      close(vx + vw * 1.12 + 3)
+      x = vx + vw + gap
       return true
     }
-    if (ctx) cell({ icon: 'chip', label: 'CONTEXT', value: lvl >= 1 ? ctx.value.split(' · ')[0] : ctx.value, color: ctx.color }, ctx.pct)
+    if (ctx) cell({ icon: 'chip', label: 'CONTEXT', value: tokens ? ctx.value : ctx.value.split(' · ')[0], color: ctx.color }, ctx.pct)
     let placed = 0
     for (const it of items) {
       if (!cell(it)) break
       placed++
     }
-    return { parts, placed }
+    return { groups: tailGroup ? [...groups, tailGroup] : groups, placed }
   }
+  // The first layout that keeps every must-have stat; failing that, the one that keeps the most.
   const need = Math.min(must, items.length)
-  let best = layout(false, 1)
-  for (const lvl of [0, 1]) {
+  let best = layout(false, LEVELS.length - 1)
+  for (let lvl = 0; lvl < LEVELS.length; lvl++) {
     const tried = [tail ? layout(true, lvl) : null, layout(false, lvl)].find(o => o && o.placed >= need)
     if (tried) { best = tried; break }
   }
-  const parts = best.parts
-
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${H}" viewBox="0 0 ${w} ${H}"><style>${TXT_CSS}</style>${parts.join('')}</svg>`
+  return best.groups.map(g => {
+    const gw = Math.ceil(g.w)
+    return { w: gw, svg: `<svg xmlns="http://www.w3.org/2000/svg" width="${gw}" height="${H}" viewBox="${g.x0} 0 ${gw} ${H}"><style>${TXT_CSS}</style>${g.parts.join('')}</svg>` }
+  })
 }
 
 
@@ -685,12 +854,16 @@ async function draw($: any, e: any, cfg: Cfg, mode: 'band' | 'pane'): Promise<an
   // on a very wide window, but it can never push the counters out of the row.
   const maxPx = mode === 'band' ? 1040 : 100000
   const px = (cells: number) => Math.round(Math.min(cells * pxCol, maxPx))
-  const barEl = (width: number, from: number, to: number, hasCrab: boolean, live: boolean) =>
+  // The band's bar takes the row less what stands beside it in px: the status icon (22), the percent
+  // and timer (about 95) and the two counter chips (about 80), the gaps between them and a margin.
+  // Columns convert at 9.6px there; the spacer before the chips takes up any estimate error.
+  const bandBarPx = Math.round(Math.max(120, Math.min(1400, cols * 9.6 - 265)))
+  const barEl = (width: number, from: number, to: number, hasCrab: boolean, live: boolean, pxW = px(width)) =>
     hasSvg ? (
       <table.Svg
-        source={dotBar(px(width), to, hasCrab, live)}
+        source={dotBar(pxW, to, hasCrab, live)}
         alt={`progress ${Math.round(to * 100)}%`}
-        width={px(width)}
+        width={pxW}
         height={hasCrab ? 24 : 12}
       />
     ) : (
@@ -702,18 +875,30 @@ async function draw($: any, e: any, cfg: Cfg, mode: 'band' | 'pane'): Promise<an
     ) : (
       <Text color="#2dd4bf" bold>{state === 'done' ? '✓' : state === 'running' ? SPIN[tick % SPIN.length] : '◇'}</Text>
     )
+  // The two counters, pinned to the band's right edge by a spacer. On the desktop each is a small
+  // drawn chip, a robot head for sub-agents and a terminal window for jobs: `>_` in text read as a face.
   const chips = (
     <Box flexDirection="row" gap={1} alignItems="center" flexShrink={0}>
-      <Box flexShrink={0}><Text color="#d97757" dimColor={runningAgents.length === 0}>{`🤖 ${runningAgents.length}`}</Text></Box>
-      <Box flexShrink={0}><Text color="#4ade80" dimColor={runningTasks.length === 0}>{`>_ ${runningTasks.length}`}</Text></Box>
+      {hasSvg ? (
+        <Box flexShrink={0}><table.Svg source={robotChip(runningAgents.length)} alt={`sub-agents ${runningAgents.length}`} width={chipW(runningAgents.length)} height={16} /></Box>
+      ) : (
+        <Box flexShrink={0}><Text color="#d97757" dimColor={runningAgents.length === 0}>{`🤖 ${runningAgents.length}`}</Text></Box>
+      )}
+      {hasSvg ? (
+        <Box flexShrink={0}><table.Svg source={termChip(runningTasks.length)} alt={`background jobs ${runningTasks.length}`} width={chipW(runningTasks.length)} height={16} /></Box>
+      ) : (
+        <Box flexShrink={0}><Text color="#4ade80" dimColor={runningTasks.length === 0}>{`>_ ${runningTasks.length}`}</Text></Box>
+      )}
     </Box>
   )
+  const spacer = <Box flexGrow={1} flexShrink={1} minWidth={0} />
   if (mode === 'band' && !isLive) {
     return (
       <Box flexDirection="row" gap={1} alignItems="center">
         <Box flexShrink={0}>{statusEl('idle')}</Box>
-        <Box flexShrink={0}>{barEl(barW, 0, 0, true, false)}</Box>
+        <Box flexShrink={0}>{barEl(barW, 0, 0, true, false, mode === 'band' ? bandBarPx : px(barW))}</Box>
         <Box flexShrink={0}><Text dimColor>idle</Text></Box>
+        {spacer}
         {chips}
       </Box>
     )
@@ -726,9 +911,10 @@ async function draw($: any, e: any, cfg: Cfg, mode: 'band' | 'pane'): Promise<an
   const header = (
     <Box flexDirection="row" gap={1} alignItems="center">
       <Box flexShrink={0}>{statusEl(done ? 'done' : isRunning ? 'running' : 'idle')}</Box>
-      <Box flexShrink={0}>{barEl(barW, r.from, r.shown, true, isRunning)}</Box>
+      <Box flexShrink={0}>{barEl(barW, r.from, r.shown, true, isRunning, mode === 'band' ? bandBarPx : px(barW))}</Box>
       <Box flexShrink={0}><Text bold={done} color={done ? '#4ade80' : undefined}>{done ? 'done' : `${pct}%${est}`}</Text></Box>
       <Box flexShrink={0}><Text dimColor>{elapsed}</Text></Box>
+      {mode === 'band' && spacer}
       {mode === 'band' && chips}
     </Box>
   )
@@ -786,7 +972,9 @@ async function draw($: any, e: any, cfg: Cfg, mode: 'band' | 'pane'): Promise<an
     </Box>
   )
   const card = { borderStyle: 'round', borderColor: 'inactive', paddingX: 1, paddingY: 1 }
-  const innerW = Math.max(160, (cols - 2) * 8)
+  // The card's inner width in px. Measured on the desktop pane: about 9px per column (8 left the
+  // card headers some 58px short of the card's right edge).
+  const innerW = Math.max(160, (cols - 2) * 9)
   const hdr = (name: string, note: string, color: string, iconName: string, live: boolean, noteShort?: string) =>
     hasSvg ? <table.Svg source={headerSvg(innerW, name, note, color, iconName, live, noteShort)} alt={`${name}: ${note}`} width={innerW} height={30} /> : title(name, note, color)
   const tile = (label: string, value: string, color: string | undefined, iconName: string, w: number, tileH = 48) =>
@@ -805,7 +993,7 @@ async function draw($: any, e: any, cfg: Cfg, mode: 'band' | 'pane'): Promise<an
     ['TURN', turnCost < 0 ? '—' : realMoney(turnCost), turnCost < 0 ? undefined : '#fbbf24', 'clock'],
     ['AGENTS', allAgents.length === 0 ? '—' : money(agentCost), allAgents.length === 0 ? undefined : '#fbbf24', 'robot'],
     ...(hasRing ? [] : [['CONTEXT', ctxWindow > 0 ? (innerW < 460 ? `${ctxPct}% · ${tfmt(ctxTokens)}` : `${tfmt(ctxTokens)} / ${tfmt(ctxWindow)}`) : '—', ctxWindow > 0 ? ctxColor(ctxTokens, ctxPct) : undefined, 'chip'] as [string, string, string | undefined, string]]),
-    ...limits.map((l): [string, string, string | undefined, string] => [l.kind === 'five_hour' ? '5H LIMIT' : l.kind === 'seven_day' ? '7D LIMIT' : l.kind.toUpperCase(), `${Math.round(l.percentUsed)}%`, pctColor(l.percentUsed), 'clock']),
+    ...limits.map((l): [string, string, string | undefined, string] => [l.kind === 'five_hour' ? '5H LIMIT' : l.kind === 'seven_day' ? '7D LIMIT' : l.kind.toUpperCase(), `${Math.round(l.percentUsed)}%`, pctColor(l.percentUsed), limitIcon(l.kind)]),
   ]
   const isNarrow = innerW < 460
   // The terminal's text tiles: two or three to a row, in cells (the card's border and padding take 4).
@@ -848,7 +1036,7 @@ async function draw($: any, e: any, cfg: Cfg, mode: 'band' | 'pane'): Promise<an
     const strip: StripItem[] = [
       { icon: 'coin', label: 'SESSION', value: sessionCost === null ? '—' : realMoney(sessionCost), color: '#fbbf24' },
       { icon: 'clock', label: 'TURN', value: turnCost < 0 ? '—' : realMoney(turnCost), color: turnCost < 0 ? undefined : '#fbbf24' },
-      ...limits.map((l): StripItem => ({ icon: 'clock', label: l.kind === 'five_hour' ? '5H' : l.kind === 'seven_day' ? '7D' : l.kind.toUpperCase(), value: `${Math.round(l.percentUsed)}%`, color: pctColor(l.percentUsed) })),
+      ...limits.map((l): StripItem => ({ icon: limitIcon(l.kind), label: l.kind === 'five_hour' ? '5H' : l.kind === 'seven_day' ? '7D' : l.kind.toUpperCase(), value: `${Math.round(l.percentUsed)}%`, color: pctColor(l.percentUsed) })),
       { icon: 'bars', label: usage ? `${turns} TURN${turns === 1 ? '' : 'S'}` : 'TURNS', value: usage ? clockLong(upMs) : '—', color: '#d97757' },
       ...(allAgents.length > 0 ? [{ icon: 'robot', label: 'AGENTS', value: money(agentCost), color: '#a78bfa' }] : []),
     ]
@@ -860,8 +1048,17 @@ async function draw($: any, e: any, cfg: Cfg, mode: 'band' | 'pane'): Promise<an
     const tail: StripTail | undefined = isUltra
       ? { agents: `${runningAgents.length} · ${doneAgents.length} done`, agentsLive: runningAgents.length > 0, tasks: `${runningTasks.length} · ${doneTasks.length} done`, tasksLive: runningTasks.length > 0 }
       : undefined
-    const sessionRow = hasSvg ? (
-      <table.Svg source={stripSvg(innerW, ctxWindow > 0 ? { pct: ctxPct, value: ctxVal, color: ctxColor(ctxTokens, ctxPct) } : null, strip, tail, 2 + limits.length, stripPx)} alt={`context ${ctxVal}`} width={innerW} height={stripPx} />
+    const ctxCell = ctxWindow > 0 ? { pct: ctxPct, value: ctxVal, color: ctxColor(ctxTokens, ctxPct) } : null
+    // Under 30px high (the pane at its smallest) the strip goes slim: one line of icons and values,
+    // its groups spread evenly across the pane.
+    const sessionRow = hasSvg && stripPx < 30 ? (
+      <Box flexDirection="row" justifyContent="space-between" alignItems="center">
+        {slimStripGroups(innerW, stripPx, ctxCell, strip, tail, 2 + limits.length).map((g, k) => (
+          <table.Svg source={g.svg} alt={k === 0 ? `context ${ctxVal}` : 'stat'} width={g.w} height={stripPx} />
+        ))}
+      </Box>
+    ) : hasSvg ? (
+      <table.Svg source={stripSvg(innerW, ctxCell, strip, tail, 2 + limits.length)} alt={`context ${ctxVal}`} width={innerW} height={30} />
     ) : (
       <Text wrap="truncate-end">
         {ctxWindow > 0 && <Text color={ctxColor(ctxTokens, ctxPct)} bold>{`${['○', '◔', '◑', '◕', '●'][Math.round(Math.min(100, ctxPct) / 25)]} ${ctxVal}`}</Text>}
@@ -955,7 +1152,8 @@ async function draw($: any, e: any, cfg: Cfg, mode: 'band' | 'pane'): Promise<an
           const sp = sprites[a.sprite] ?? BUILTIN.crab!
           const frame = Math.floor((tick + a.startedAt) / 4) % sp.frames.length
           const p = isRun ? Math.min(0.95, 1 - Math.exp(-a.steps / cfg.ka)) : 1
-          const u = sp.frames[0]!.length > 4 ? 4.6 : 6
+          // About 50px wide whatever the grid: the 14-wide built-ins at 3.6px, an 8-wide custom one at 6.
+          const u = Math.min(6, 50 / sp.frames[0]![0]!.length)
           const spriteW = Math.round(sp.frames[0]![0]!.length * u)
           const spriteH = Math.round(sp.frames[0]!.length * u) + 2
           const cmax = ctxMaxOf(a.model)
@@ -966,9 +1164,9 @@ async function draw($: any, e: any, cfg: Cfg, mode: 'band' | 'pane'): Promise<an
             <Box flexDirection="row" gap={1} alignItems="center">
               <Box flexShrink={0} width={hasSvg ? Math.ceil(spriteW / 8) + 1 : sp.frames[0]![0]!.length + 1}>
                 {hasSvg ? (
-                  <table.Svg source={spriteSvg(sp, u, isRun)} alt={`${a.sprite} mascot`} width={spriteW} height={spriteH} />
+                  <table.Svg source={spriteSvg(sp, u, isRun, a.variant ?? 0, a.id)} alt={`${a.sprite} mascot`} width={spriteW} height={spriteH} />
                 ) : (
-                  <Box flexDirection="column">{spriteRows(Box, Text, sp, frame, !isRun)}</Box>
+                  <Box flexDirection="column">{spriteRows(Box, Text, sp, frame, !isRun, a.variant ?? 0)}</Box>
                 )}
               </Box>
               <Box flexDirection="column" flexGrow={1} flexShrink={1} minWidth={0}>
@@ -1042,7 +1240,7 @@ export const register: Register = (on, options) => {
   const ka = num(options.agentEstimateSteps, 6)
   const showCost = options.showCost !== false
   const mapText = str(options.mascotMap)
-  const fallback = str(options.defaultMascot) || 'crab'
+  const fallback = str(options.defaultMascot)
   const spritesFile = str(options.spritesFile)
 
   on('session.start', async ($, e, next) => {
@@ -1150,6 +1348,13 @@ export const register: Register = (on, options) => {
     const now = await $.clock.now()
     const custom = await read($, spritesA)
     const known = [...Object.keys(BUILTIN), ...Object.keys(custom)]
+    const running = Object.values(await read($, agentsA)).filter(a => a.status === 'running')
+    const sprite = pickSprite(e.subagentType, e.description, mapText, fallback, known, running.map(a => a.sprite))
+    // The next palette after the ones running agents of this kind wear.
+    const sp: Sprite | undefined = custom[sprite] ?? BUILTIN[sprite]
+    const taken = running.filter(a => a.sprite === sprite).map(a => a.variant ?? 0)
+    const nVar = sp?.variants?.length ?? 1
+    const variant = Array.from({ length: nVar }, (_, k) => k).find(k => !taken.includes(k)) ?? taken.length % nVar
     const row: AgentRow = {
       id,
       label: e.description,
@@ -1157,7 +1362,8 @@ export const register: Register = (on, options) => {
       model: modelName(out.model || e.model || e.parentModel),
       status: 'running',
       steps: 0, tools: 0, input: 0, output: 0, cacheRead: 0, cacheWrite: 0, ctx: 0,
-      sprite: pickSprite(e.subagentType, e.description, mapText, fallback, known),
+      sprite,
+      variant,
       background: e.background,
       startedAt: now,
       endedAt: 0,

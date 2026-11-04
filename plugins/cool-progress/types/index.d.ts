@@ -40,6 +40,8 @@ export type AgentRow = {
   /** Prompt size of the agent's latest model step, in tokens: its context fill. */
   ctx: number
   sprite: string
+  /** Which of the sprite's palette variants, so two agents of one kind look different. */
+  variant?: number
   background: boolean
   startedAt: number
   /** When it finished, 0 while it runs: its timer freezes here. */
@@ -56,7 +58,14 @@ export type TaskRow = {
   endedAt: number
 }
 
-export type Sprite = { palette: Record<string, string>; frames: string[][] }
+export type Sprite = {
+  palette: Record<string, string>
+  frames: string[][]
+  /** Drawn over the frame now and then: closed eyes. Rows may be fewer than the frame's. */
+  blink?: string[]
+  /** Palette swaps; the first is usually {} (the palette as is). */
+  variants?: Record<string, string>[]
+}
 
 declare module 'claude-code' {
   interface PluginState {

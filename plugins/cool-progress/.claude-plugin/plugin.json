@@ -1,6 +1,6 @@
 {
   "name": "cool-progress",
-  "version": "0.1.42",
+  "version": "0.1.49",
   "description": "A slim animated band above the prompt: live progress bar with a position marker, a compact sub-agent panel with pixel mascots, model and estimated cost, and background-task rows with an animated terminal sign.",
   "author": { "name": "Viktor Moyseyenko", "email": "vityok@gmail.com" },
   "license": "MIT",
@@ -34,8 +34,8 @@
     "defaultMascot": {
       "type": "string",
       "title": "Default mascot",
-      "description": "Mascot when no keyword matches: crab, robot, owl, cat, ghost, wizard, or a name from your sprites file.",
-      "default": "crab"
+      "description": "Mascot when no keyword matches: crab, robot, owl, cat, ghost, wizard, fox, octopus, frog, dragon, penguin, or a name from your sprites file. Empty (the default) gives each such agent a kind no running agent has.",
+      "default": ""
     },
     "spritesFile": {
       "type": "string",
