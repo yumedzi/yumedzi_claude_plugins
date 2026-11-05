@@ -54,3 +54,18 @@ test('the band pins its counters right and draws them as a robot head and a term
   expect(String(svgs.find(s => /progress/.test(s.props.alt))?.props.source)).toContain('cr-f0')
   await band.unmount()
 })
+
+// The band's px per column was fitted on screenshots: at 62 columns a 330px bar fit, at 96 columns
+// 657px pushed the jobs chip out of the row (it fit at about 596px).
+for (const [cols, max] of [[62, 335], [96, 600]] as const)
+  test(`the band's bar at ${cols} columns leaves the counters room (bar <= ${max}px)`, async ($, on) => {
+    mock.clock(on, { now: 1_000_000 })
+    on('session.usage', usage as any)
+    const band: any = await $.ui.mount({ plugin: 'cool-progress', surface: 'desktop', component: 'AbovePrompt', props: { bodyColumns: cols, maxRows: 4, isWorking: false } } as any)
+    const svgs = (await band.findAll({ type: 'Svg' })) as any[]
+    const bar = svgs.find(s => /^progress/.test(s.props.alt))
+    expect(bar).toBeDefined()
+    expect(bar.props.width).toBeLessThanOrEqual(max)
+    expect(bar.props.width).toBeGreaterThan(max - 60)
+    await band.unmount()
+  })

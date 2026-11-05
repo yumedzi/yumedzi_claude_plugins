@@ -524,25 +524,49 @@ const ctxMaxOf = (model: string) => (/haiku-4/.test(model) ? 200000 : 1000000)
 // side and blink.
 // Each chip carries its count, drawn 4px after the icon, so the number sits snug against it.
 const chipW = (n: number) => Math.ceil(24 + String(n).length * 7.6)
-const chipCount = (n: number, color: string, isLive: boolean) =>
-  `<text x="24" y="12.6" font-family="${FONT}" font-size="13" font-weight="${isLive ? 700 : 400}" fill="${color}" fill-opacity="${isLive ? 1 : 0.6}">${n}</text>`
+// Both chips follow the theme: light gets a pale plate with deeper strokes, dark keeps the night
+// plate. Classes carry a chip prefix (rb/tm) because the band's SVGs share one page's styles.
+const chipCount = (n: number, cls: string, isLive: boolean) =>
+  `<text class="${cls}" x="24" y="12.6" font-family="${FONT}" font-size="13" font-weight="${isLive ? 700 : 400}" fill-opacity="${isLive ? 1 : 0.6}">${n}</text>`
+type ChipTheme = { line: string; plate: string; text: string; accent: string }
+const chipThemeCss = (p: string, light: ChipTheme, dark: ChipTheme) => {
+  const rules = (t: ChipTheme) =>
+    `.${p}S{stroke:${t.line}}.${p}F{fill:${t.line}}.${p}P{fill:${t.plate}}.${p}T{fill:${t.text}}.${p}A{fill:${t.accent}}`
+  return `${rules(light)}@media (prefers-color-scheme: dark){${rules(dark)}}`
+}
 
 function robotChip(n: number): string {
   const isLive = n > 0
-  const c = isLive ? '#a78bfa' : '#6b7280'
-  const eye = isLive ? '#67e8f9' : '#6b7280'
+  const theme = chipThemeCss(
+    'rb',
+    isLive
+      ? { line: '#7c3aed', plate: '#f5f3ff', text: '#7c3aed', accent: '#0891b2' }
+      : { line: '#9ca3af', plate: '#f3f4f6', text: '#8b5cf6', accent: '#9ca3af' },
+    isLive
+      ? { line: '#a78bfa', plate: '#1a1433', text: '#a78bfa', accent: '#67e8f9' }
+      : { line: '#6b7280', plate: '#1a1433', text: '#a78bfa', accent: '#6b7280' },
+  )
+  const glow = isLive ? '.rbG{fill:#d946ef}@media (prefers-color-scheme: dark){.rbG{fill:#f0abfc}}' : ''
   const css = isLive
     ? '.gl{animation:gl 1.6s ease-in-out infinite}@keyframes gl{50%{opacity:.25}}.ey{animation:ey 3.2s steps(1) infinite}@keyframes ey{0%{transform:translateX(0)}30%{transform:translateX(1px)}55%{transform:translateX(-1px)}80%{transform:translateX(0)}}.bk{animation:bk 3.2s steps(1) infinite}@keyframes bk{0%,88%{transform:scaleY(1)}89%,93%{transform:scaleY(.15)}94%{transform:scaleY(1)}}.bk{transform-origin:10px 8.6px}'
     : ''
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${chipW(n)}" height="16" viewBox="0 0 ${chipW(n)} 16"><style>${css}@media (prefers-reduced-motion: reduce){.gl,.ey,.bk{animation:none}}</style><path d="M10 3.4V1.8" stroke="${c}" stroke-width="1.3" stroke-linecap="round"/><circle class="gl" cx="10" cy="1.5" r="1.3" fill="${isLive ? '#f0abfc' : c}"/><rect x="0.9" y="6.6" width="2" height="4.6" rx="1" fill="${c}"/><rect x="17.1" y="6.6" width="2" height="4.6" rx="1" fill="${c}"/><rect x="3.4" y="3.75" width="13.2" height="11.5" rx="3.2" fill="#1a1433" stroke="${c}" stroke-width="1.5"/><g class="bk"><g class="ey"><rect x="6" y="7.3" width="2.4" height="2.6" rx="1" fill="${eye}"/><rect x="11.6" y="7.3" width="2.4" height="2.6" rx="1" fill="${eye}"/></g></g><path d="M7.2 12.4h5.6" stroke="${c}" stroke-width="1.1" stroke-linecap="round" stroke-dasharray="1.1 1"/>${chipCount(n, '#a78bfa', isLive)}</svg>`
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${chipW(n)}" height="16" viewBox="0 0 ${chipW(n)} 16"><style>${theme}${glow}${css}@media (prefers-reduced-motion: reduce){.gl,.ey,.bk{animation:none}}</style><path class="rbS" d="M10 3.4V1.8" stroke-width="1.3" stroke-linecap="round"/><circle class="gl ${isLive ? 'rbG' : 'rbF'}" cx="10" cy="1.5" r="1.3"/><rect class="rbF" x="0.9" y="6.6" width="2" height="4.6" rx="1"/><rect class="rbF" x="17.1" y="6.6" width="2" height="4.6" rx="1"/><rect class="rbP rbS" x="3.4" y="3.75" width="13.2" height="11.5" rx="3.2" stroke-width="1.5"/><g class="bk"><g class="ey"><rect class="rbA" x="6" y="7.3" width="2.4" height="2.6" rx="1"/><rect class="rbA" x="11.6" y="7.3" width="2.4" height="2.6" rx="1"/></g></g><path class="rbS" d="M7.2 12.4h5.6" fill="none" stroke-width="1.1" stroke-linecap="round" stroke-dasharray="1.1 1"/>${chipCount(n, 'rbT', isLive)}</svg>`
 }
 
 function termChip(n: number): string {
   const isLive = n > 0
-  const c = isLive ? '#4ade80' : '#6b7280'
+  const theme = chipThemeCss(
+    'tm',
+    isLive
+      ? { line: '#16a34a', plate: '#f0fdf4', text: '#16a34a', accent: '#16a34a' }
+      : { line: '#9ca3af', plate: '#f3f4f6', text: '#22c55e', accent: '#9ca3af' },
+    isLive
+      ? { line: '#4ade80', plate: '#0b1f14', text: '#4ade80', accent: '#4ade80' }
+      : { line: '#6b7280', plate: '#0b1f14', text: '#4ade80', accent: '#6b7280' },
+  )
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${chipW(n)}" height="16" viewBox="0 0 ${chipW(n)} 16"><style>.cu{${isLive ? 'animation:cu 1s steps(1) infinite' : ''}}@keyframes cu{50%{opacity:0}}@media (prefers-reduced-motion: reduce){.cu{animation:none}}</style><rect x="0.75" y="0.75" width="18.5" height="14.5" rx="3" fill="#0b1f14" stroke="${c}" stroke-width="1.5"/><path d="M0.75 4.6h18.5" stroke="${c}" stroke-width="1"/><circle cx="3.4" cy="2.7" r="0.8" fill="#f87171"/><circle cx="5.8" cy="2.7" r="0.8" fill="#fbbf24"/><circle cx="8.2" cy="2.7" r="0.8" fill="#4ade80"/><path d="M4 7.6l2.6 2.1L4 11.8" fill="none" stroke="${c}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><rect class="cu" x="8.4" y="10.9" width="5" height="1.5" rx="0.6" fill="${c}"/>${chipCount(n, '#4ade80', isLive)}</svg>`
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${chipW(n)}" height="16" viewBox="0 0 ${chipW(n)} 16"><style>${theme}.cu{${isLive ? 'animation:cu 1s steps(1) infinite' : ''}}@keyframes cu{50%{opacity:0}}@media (prefers-reduced-motion: reduce){.cu{animation:none}}</style><rect class="tmP tmS" x="0.75" y="0.75" width="18.5" height="14.5" rx="3" stroke-width="1.5"/><path class="tmS" d="M0.75 4.6h18.5" stroke-width="1"/><circle cx="3.4" cy="2.7" r="0.8" fill="#f87171"/><circle cx="5.8" cy="2.7" r="0.8" fill="#fbbf24"/><circle cx="8.2" cy="2.7" r="0.8" fill="#4ade80"/><path class="tmS" d="M4 7.6l2.6 2.1L4 11.8" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><rect class="cu tmA" x="8.4" y="10.9" width="5" height="1.5" rx="0.6"/>${chipCount(n, 'tmT', isLive)}</svg>`
 }
 
 function termIcon(status: 'running' | 'done' | 'failed'): string {
@@ -856,8 +880,12 @@ async function draw($: any, e: any, cfg: Cfg, mode: 'band' | 'pane'): Promise<an
   const px = (cells: number) => Math.round(Math.min(cells * pxCol, maxPx))
   // The band's bar takes the row less what stands beside it in px: the status icon (22), the percent
   // and timer (about 95) and the two counter chips (about 80), the gaps between them and a margin.
-  // Columns convert at 9.6px there; the spacer before the chips takes up any estimate error.
-  const bandBarPx = Math.round(Math.max(120, Math.min(1400, cols * 9.6 - 265)))
+  // Fitted on two desktop screenshots (62 and 96 columns): the band's row grows about 7.85px per
+  // column, so the bar is 7.85 * cols less 160px for what stands beside it. The old 9.6px slope
+  // ran wide as the window grew and pushed the counters out of the row; erring short is safe,
+  // since the spacer before the chips takes up the slack. Counts of more digits widen their chip.
+  const chipExtra = chipW(runningAgents.length) + chipW(runningTasks.length) - 2 * chipW(0)
+  const bandBarPx = Math.round(Math.max(120, Math.min(1400, cols * 7.85 - 160 - chipExtra)))
   const barEl = (width: number, from: number, to: number, hasCrab: boolean, live: boolean, pxW = px(width)) =>
     hasSvg ? (
       <table.Svg
@@ -975,6 +1003,9 @@ async function draw($: any, e: any, cfg: Cfg, mode: 'band' | 'pane'): Promise<an
   // The card's inner width in px. Measured on the desktop pane: about 9px per column (8 left the
   // card headers some 58px short of the card's right edge).
   const innerW = Math.max(160, (cols - 2) * 9)
+  // innerW leans wide so stretched strips reach the card's edge; rows of fixed-width tiles that
+  // wrap are sized from the lean estimate instead, or two tiles that would fit drop to two rows.
+  const fitW = Math.max(160, (cols - 2) * 8)
   const hdr = (name: string, note: string, color: string, iconName: string, live: boolean, noteShort?: string) =>
     hasSvg ? <table.Svg source={headerSvg(innerW, name, note, color, iconName, live, noteShort)} alt={`${name}: ${note}`} width={innerW} height={30} /> : title(name, note, color)
   const tile = (label: string, value: string, color: string | undefined, iconName: string, w: number, tileH = 48) =>
@@ -999,9 +1030,14 @@ async function draw($: any, e: any, cfg: Cfg, mode: 'band' | 'pane'): Promise<an
   // The terminal's text tiles: two or three to a row, in cells (the card's border and padding take 4).
   const termTileW = Math.max(14, Math.floor((cols - 4) / (cols >= 66 ? 3 : 2)) - 1)
   const perRow = isNarrow ? 2 : Math.min(tiles.length, 4)
-  const tileW = isNarrow ? Math.max(90, Math.floor((innerW - 12) / 2) - 4) : Math.max(100, Math.floor((innerW - (hasRing ? RING + 30 : 0)) / perRow) - 8)
-  const sideW = Math.max(90, innerW - RING - 24)
-  const belowRows = Math.ceil(Math.max(0, tiles.length - SIDE) / 2)
+  const tileW = isNarrow ? Math.max(90, Math.floor((fitW - 12) / 2) - 4) : Math.max(100, Math.floor((fitW - (hasRing ? RING + 30 : 0)) / perRow) - 8)
+  // Narrow with a ring, the limits (up to three) stand in a second slim column beside the costs
+  // when both columns fit, about 90px each; otherwise they fall below the ring.
+  const extraTiles = tiles.length - SIDE
+  const sideRoom = fitW - RING - 24
+  const twoCol = extraTiles > 0 && extraTiles <= SIDE && sideRoom >= 196
+  const sideW = twoCol ? Math.floor((sideRoom - 8) / 2) : Math.max(90, innerW - RING - 24)
+  const belowRows = twoCol ? 0 : Math.ceil(Math.max(0, extraTiles) / 2)
 
   // Three views, the largest that fits the pane's height without scrolling:
   //   full    the cards as they are;
@@ -1125,8 +1161,9 @@ async function draw($: any, e: any, cfg: Cfg, mode: 'band' | 'pane'): Promise<an
             <Box flexDirection="row" gap={2} alignItems="center">
               <Box flexShrink={0}><table.Svg source={donutSvg(RING, ctxPct, ctxColor(ctxTokens, ctxPct), `${tfmt(ctxTokens)} / ${tfmt(ctxWindow)}`)} alt={`context ${ctxPct}%`} width={RING} height={RING} /></Box>
               <Box flexDirection="column">{tiles.slice(0, SIDE).map(x => tile(x[0], x[1], x[2], x[3], sideW, SLIM))}</Box>
+              {twoCol && <Box flexDirection="column" alignSelf="flex-start">{tiles.slice(SIDE).map(x => tile(x[0], x[1], x[2], x[3], sideW, SLIM))}</Box>}
             </Box>
-            {tiles.length > SIDE && (
+            {tiles.length > SIDE && !twoCol && (
               <Box flexDirection="row" flexWrap="wrap" columnGap={1} rowGap={0}>
                 {tiles.slice(SIDE).map(x => tile(x[0], x[1], x[2], x[3], tileW))}
               </Box>

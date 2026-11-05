@@ -122,3 +122,19 @@ test('the slim strip draws one Svg per group so the row can spread them', async 
   expect(await ui.find({ type: 'Box', justifyContent: 'space-between' } as any)).toBeDefined()
   await ui.unmount()
 })
+
+for (const [cols, slim] of [[50, true], [36, false]] as const)
+  test(`on a subscription at ${cols} columns the limits ${slim ? 'stand in a column beside the costs' : 'fall below the ring'}`, async ($, on) => {
+    mock.clock(on, { now: 1_000_000 })
+    on('session.usage', (() => ({ value: { cost: { usd: 0.312 }, context: { tokens: 78000, window: 1000000, percent: 8 }, startedAt: 0, rateLimits: [{ kind: 'five_hour', percentUsed: 15 }, { kind: 'seven_day', percentUsed: 83 }] } })) as any)
+    on('session.turns', (() => ({ value: 1 })) as any)
+    const ui = await $.ui.mount({
+      plugin: 'cool-progress', surface: 'desktop', component: 'Pane', requestId: 'cool-progress',
+      props: { title: 'Cool Progress', isFocused: false, bodyColumns: cols, placement: 'dock', scroll: { bodyRows: 60, contentRows: 0, offset: 0 } } as any,
+    } as any)
+    const svgs: any[] = (await ui.findAll({ type: 'Svg' })) ?? []
+    const limit = svgs.filter(n => /^(5H|7D) LIMIT/.test(String(n?.props?.alt ?? '')))
+    expect(limit.length).toBe(2)
+    for (const n of limit) expect(n.props.height).toBe(slim ? 40 : 48)
+    await ui.unmount()
+  })
